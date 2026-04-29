@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GitHub Release Notifier | Subscriptions</title>
+        <link rel="stylesheet" href="/assets/app.css" />
+    </head>
+    <body>
+        <main class="page">
+            <section class="card">
+                <h1 class="title">Перегляд підписок</h1>
+                <p class="subtitle">Тут ви можете переглянути свої активні підписки на GitHub релізи.</p>
+
+                <form class="form" id="search-form">
+                    <div class="field">
+                        <label class="label" for="email">Електронна пошта</label>
+                        <input class="input" id="email" name="email" type="email" placeholder="you@example.com" required />
+                    </div>
+
+                    <button class="button" id="check-button" type="submit">Показати підписки</button>
+                </form>
+
+                <div id="search-message" class="message"></div>
+                <div id="subscriptions-list" class="subscriptions-list"></div>
+
+                <div class="buttons">
+                    <a href="/" class="button"> Створити нову підписку </a>
+                </div>
+            </section>
+        </main>
+        <script src="/assets/subscriptions.js"></script>
+    </body>
+</html>

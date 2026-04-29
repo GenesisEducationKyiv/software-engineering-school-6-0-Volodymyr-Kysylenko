@@ -1,0 +1,45 @@
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { subscriptionHandlers } from "./subscription.handlers.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PROTO_PATH = path.resolve(__dirname, "../../proto/subscription.proto");
+
+// Load proto file
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+});
+
+const subscriptionProto = grpc.loadPackageDefinition(packageDefinition).subscription as any;
+
+export function createGrpcServer(): grpc.Server {
+    const server = new grpc.Server();
+
+    server.addService(subscriptionProto.SubscriptionService.service, subscriptionHandlers);
+
+    return server;
+}
+
+export function startGrpcServer(port: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const server = createGrpcServer();
+
+        server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (error, boundPort) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            console.log(`gRPC server started on port ${boundPort}`);
+            resolve();
+        });
+    });
+}
