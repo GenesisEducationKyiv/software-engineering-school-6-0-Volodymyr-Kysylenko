@@ -4,10 +4,18 @@ import { AppError } from "../utils/errors.js";
 import { CreateSubscriptionDto, TokenParamsDto, ListSubscriptionsDto } from "../dto/subscription.dto.js";
 import { validateGrpcRequest, mapHttpToGrpcStatus } from "./validation.utils.js";
 
-export const subscriptionHandlers = {
-    async Subscribe(call: any, callback: any) {
+import type { SubscriptionServiceHandlers } from "./generated/subscription/SubscriptionService.js";
+
+import type { SubscribeRequest__Output } from "./generated/subscription/SubscribeRequest.js";
+import type { ConfirmRequest__Output } from "./generated/subscription/ConfirmRequest.js";
+import type { UnsubscribeRequest__Output } from "./generated/subscription/UnsubscribeRequest.js";
+import type { GetSubscriptionsRequest__Output } from "./generated/subscription/GetSubscriptionsRequest.js";
+
+export const subscriptionHandlers: SubscriptionServiceHandlers = {
+    async Subscribe(call, callback) {
         try {
-            const { email, repo } = call.request;
+            const request = call.request as SubscribeRequest__Output;
+            const { email, repo } = request;
 
             const validation = validateGrpcRequest({ email, repo }, CreateSubscriptionDto);
             if (!validation.success) {
@@ -43,9 +51,10 @@ export const subscriptionHandlers = {
         }
     },
 
-    async Confirm(call: any, callback: any) {
+    async Confirm(call, callback) {
         try {
-            const { token } = call.request;
+            const request = call.request as ConfirmRequest__Output;
+            const { token } = request;
 
             const validation = validateGrpcRequest({ token }, TokenParamsDto);
             if (!validation.success) {
@@ -82,9 +91,10 @@ export const subscriptionHandlers = {
         }
     },
 
-    async Unsubscribe(call: any, callback: any) {
+    async Unsubscribe(call, callback) {
         try {
-            const { token } = call.request;
+            const request = call.request as UnsubscribeRequest__Output;
+            const { token } = request;
 
             const validation = validateGrpcRequest({ token }, TokenParamsDto);
             if (!validation.success) {
@@ -121,9 +131,10 @@ export const subscriptionHandlers = {
         }
     },
 
-    async GetSubscriptions(call: any, callback: any) {
+    async GetSubscriptions(call, callback) {
         try {
-            const { email } = call.request;
+            const request = call.request as GetSubscriptionsRequest__Output;
+            const { email } = request;
 
             const validation = validateGrpcRequest({ email }, ListSubscriptionsDto);
             if (!validation.success) {

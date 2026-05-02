@@ -11,7 +11,7 @@ const validateOrigin = (req: Request, res: Response, next: NextFunction) => {
     const allowedOrigins =
         env.NODE_ENV === "production"
             ? ["https://github-release-notifier.sylenity.com"]
-            : ["http://localhost:3000", "http://127.0.0.1:3000"];
+            : [`http://localhost:${env.PORT}`, `http://127.0.0.1:${env.PORT}`];
 
     const origin = req.get("Origin");
 

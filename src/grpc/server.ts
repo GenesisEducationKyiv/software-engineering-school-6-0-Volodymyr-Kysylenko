@@ -4,6 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { subscriptionHandlers } from "./subscription.handlers.js";
 
+import type { ProtoGrpcType } from "./generated/subscription.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -18,12 +20,12 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     oneofs: true,
 });
 
-const subscriptionProto = grpc.loadPackageDefinition(packageDefinition).subscription as any;
+const proto = grpc.loadPackageDefinition(packageDefinition) as unknown as ProtoGrpcType;
 
 export function createGrpcServer(): grpc.Server {
     const server = new grpc.Server();
 
-    server.addService(subscriptionProto.SubscriptionService.service, subscriptionHandlers);
+    server.addService(proto.subscription.SubscriptionService.service, subscriptionHandlers);
 
     return server;
 }

@@ -2,11 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createGrpcServer } from "../grpc/server.js";
 import { createGrpcClient } from "../grpc/client.js";
 import * as grpc from "@grpc/grpc-js";
+import { env } from "../config/env.js";
 
 describe("gRPC Subscription Service", () => {
     let server: grpc.Server;
     let client: any;
-    const testPort = 50052;
+    const testPort = env.GRPC_PORT;
 
     beforeAll(async () => {
         server = createGrpcServer();
