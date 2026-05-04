@@ -1,6 +1,9 @@
 import type { SubscriptionRecord } from "../types/subscription.js";
 
-export function shouldNotifyForTag(subscription: Pick<SubscriptionRecord, "last_seen_tag">, latestTag: string): boolean {
+export function shouldNotifyForTag(
+    subscription: Pick<SubscriptionRecord, "last_seen_tag">,
+    latestTag: string,
+): boolean {
     return subscription.last_seen_tag !== latestTag;
 }
 

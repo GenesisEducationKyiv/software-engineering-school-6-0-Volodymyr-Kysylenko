@@ -15,10 +15,10 @@ export interface HealthCheckResult {
 }
 
 export class HealthService {
-    private checks: Map<string, () => Promise<HealthCheck>> = new Map();
+    private checks = new Map<string, () => Promise<HealthCheck>>();
     private readonly version: string;
 
-    constructor(version: string = process.env.npm_package_version || "1.0.0") {
+    constructor(version: string = process.env.npm_package_version ?? "1.0.0") {
         this.version = version;
     }
 

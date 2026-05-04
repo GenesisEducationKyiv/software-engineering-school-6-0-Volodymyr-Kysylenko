@@ -3,14 +3,13 @@ import { env } from "../config/env.js";
 export interface Logger {
     info(message: string, meta?: Record<string, unknown>): void;
     warn(message: string, meta?: Record<string, unknown>): void;
-    error(message: string, error?: Error | unknown, meta?: Record<string, unknown>): void;
+    error(message: string, error?: unknown, meta?: Record<string, unknown>): void;
     debug(message: string, meta?: Record<string, unknown>): void;
 }
-
 export class ConsoleLogger implements Logger {
     private logLevels = ["error", "warn", "info", "debug"];
 
-    constructor(private context: string = "App") {}
+    constructor(private context = "App") {}
 
     private shouldLog(level: string): boolean {
         const currentLevelIndex = this.logLevels.indexOf(env.LOG_LEVEL);
@@ -30,10 +29,12 @@ export class ConsoleLogger implements Logger {
         }
     }
 
-    error(message: string, error?: Error | unknown, meta?: Record<string, unknown>): void {
+    error(message: string, error?: unknown, meta?: Record<string, unknown>): void {
         if (this.shouldLog("error")) {
             const errorMeta =
-                error instanceof Error ? { error: error.message, stack: error.stack, ...meta } : { error: String(error), ...meta };
+                error instanceof Error
+                    ? { error: error.message, stack: error.stack, ...meta }
+                    : { error: String(error), ...meta };
             this.log("ERROR", message, errorMeta);
         }
     }

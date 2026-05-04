@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+
 import { env } from "../config/env.js";
 
 const validateOrigin = (req: Request, res: Response, next: NextFunction) => {

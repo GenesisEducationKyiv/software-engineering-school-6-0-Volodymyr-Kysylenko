@@ -38,7 +38,7 @@ export class SubscriptionService {
         await githubService.assertRepositoryExists(parsedRepo);
 
         const existing = await subscriptionRepository.findByEmailAndRepo(email, parsedRepo.fullName);
-        if (existing && existing.unsubscribed_at === null) {
+        if (existing?.unsubscribed_at === null) {
             throw AppError.conflict("Email already subscribed to this repository");
         }
 

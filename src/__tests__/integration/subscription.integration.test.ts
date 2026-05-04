@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import type { Express } from "express";
 import type { Server } from "http";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
 import { createApp } from "../../app.js";
-import { pool } from "../../db/pool.js";
-import { runMigrations } from "../../db/migrate.js";
 import { env } from "../../config/env.js";
+import { runMigrations } from "../../db/migrate.js";
+import { pool } from "../../db/pool.js";
 
 describe("Subscription API Integration Tests", () => {
     let app: Express;

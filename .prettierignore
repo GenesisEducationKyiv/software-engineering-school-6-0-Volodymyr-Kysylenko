@@ -1,0 +1,6 @@
+dist
+node_modules
+public
+migrations
+proto
+src/grpc/generated

@@ -1,4 +1,4 @@
-export type SubscriptionRecord = {
+export interface SubscriptionRecord {
     id: string;
     email: string;
     repo_owner: string;
@@ -11,11 +11,11 @@ export type SubscriptionRecord = {
     created_at: Date;
     confirmed_at: Date | null;
     unsubscribed_at: Date | null;
-};
+}
 
-export type SubscriptionResponse = {
+export interface SubscriptionResponse {
     email: string;
     repo: string;
     confirmed: boolean;
     last_seen_tag: string | null;
-};
+}

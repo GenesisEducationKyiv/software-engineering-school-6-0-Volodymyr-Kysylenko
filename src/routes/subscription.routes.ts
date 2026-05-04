@@ -1,8 +1,9 @@
 import { Router } from "express";
+
 import { subscriptionController } from "../controllers/subscription.controller.js";
-import { asyncHandler } from "../utils/async-handler.js";
+import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
 import { validateBody, validateParams, validateQuery } from "../middleware/validation.middleware.js";
-import { CreateSubscriptionDto, TokenParamsDto, ListSubscriptionsDto } from "../dto/subscription.dto.js";
+import { asyncHandler } from "../utils/async-handler.js";
 
 const { subscribe, confirm, unsubscribe, list } = subscriptionController;
 const { confirmPage, unsubscribePage, subscriptionsPage } = subscriptionController;

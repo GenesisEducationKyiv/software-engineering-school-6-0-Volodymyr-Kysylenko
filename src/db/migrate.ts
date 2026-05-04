@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { pool } from "./pool.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,7 +49,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         .then(async () => {
             await pool.end();
         })
-        .catch(async (error) => {
+        .catch(async (error: unknown) => {
             console.error("Migration failed", error);
             await pool.end();
             process.exit(1);

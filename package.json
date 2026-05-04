@@ -16,7 +16,9 @@
         "test:ci": "cross-env NODE_ENV=test vitest run",
         "migrate": "dotenv -e .env.development -- tsx src/db/migrate.ts",
         "migrate:prod": "dotenv -e .env.production -- tsx src/db/migrate.ts",
-        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto && node scripts/fix-generated-imports.cjs"
+        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto && node scripts/fix-generated-imports.cjs",
+        "format": "prettier . --write",
+        "format:check": "prettier . --check"
     },
     "dependencies": {
         "@grpc/grpc-js": "^1.12.2",
@@ -36,16 +38,22 @@
     "devDependencies": {
         "@eslint/js": "^9.39.4",
         "@types/express": "^5.0.0",
-        "@types/node": "^22.10.2",
+        "@types/node": "^22.19.17",
         "@types/nodemailer": "^6.4.17",
         "@types/pg": "^8.11.10",
         "@types/swagger-ui-express": "^4.1.8",
         "cross-env": "^7.0.3",
         "dotenv-cli": "^7.4.2",
         "eslint": "^9.39.4",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-import-resolver-typescript": "^4.4.4",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-simple-import-sort": "^13.0.0",
+        "eslint-plugin-unused-imports": "^4.4.1",
         "jiti": "^2.6.1",
+        "prettier": "^3.8.3",
         "tsx": "^4.19.2",
-        "typescript": "^5.7.2",
+        "typescript": "^5.9.3",
         "typescript-eslint": "^8.59.1",
         "vitest": "^2.1.8"
     }

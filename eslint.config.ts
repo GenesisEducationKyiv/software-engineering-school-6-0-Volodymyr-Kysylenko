@@ -1,45 +1,122 @@
 import js from "@eslint/js";
-import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
+import eslintConfigPrettier from "eslint-config-prettier/flat";
+import importPlugin from "eslint-plugin-import";
+import simpleImportSort from "eslint-plugin-simple-import-sort";
+import unusedImports from "eslint-plugin-unused-imports";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-    js.configs.recommended,
-    ...tseslint.configs.recommended,
+    globalIgnores([
+        "dist/**",
+        "public/**",
+        "migrations/**",
+        "proto/**",
+        "src/grpc/generated/**",
+        "scripts/**",
+        "eslint.config.ts",
+    ]),
 
     {
-        ignores: ["dist/**", "node_modules/**", "**/*.js", "public/**", "migrations/**", "proto/**"],
-    },
-
-    {
-        files: ["**/*.ts"],
+        files: ["src/**/*.ts"],
+        extends: [
+            js.configs.recommended,
+            ...tseslint.configs.recommendedTypeChecked,
+            ...tseslint.configs.stylisticTypeChecked,
+        ],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "module",
+            parserOptions: {
+                projectService: true,
+            },
+        },
+        plugins: {
+            import: importPlugin,
+            "simple-import-sort": simpleImportSort,
+            "unused-imports": unusedImports,
+        },
+        settings: {
+            "import/resolver": {
+                typescript: {
+                    alwaysTryTypes: true,
+                    project: "./tsconfig.json",
+                },
+            },
         },
         rules: {
-            "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+            // general
+            "no-undef": "off",
+            curly: ["error", "all"],
+            eqeqeq: ["error", "always"],
+            "no-console": "error",
+            "no-else-return": "error",
+            "no-useless-return": "error",
+            "no-var": "error",
+            "object-shorthand": "error",
+            "prefer-const": "error",
+            "no-constant-condition": ["error", { checkLoops: false }],
+
+            // imports
+            "import/first": "error",
+            "import/newline-after-import": "error",
+            "import/no-duplicates": "error",
+            "import/no-unresolved": "error",
+            "simple-import-sort/imports": "error",
+            "simple-import-sort/exports": "error",
+            "unused-imports/no-unused-imports": "error",
+
+            // TypeScript
             "@typescript-eslint/no-explicit-any": "error",
-            "@typescript-eslint/explicit-function-return-type": "off",
-            "@typescript-eslint/explicit-module-boundary-types": "off",
             "@typescript-eslint/no-non-null-assertion": "error",
             "@typescript-eslint/no-namespace": "error",
+            "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
+            "@typescript-eslint/no-unused-vars": [
+                "error",
+                {
+                    argsIgnorePattern: "^_",
+                    varsIgnorePattern: "^_",
+                    caughtErrorsIgnorePattern: "^_",
+                },
+            ],
 
-            "no-console": "error",
-            "prefer-const": "error",
-            eqeqeq: ["error", "always"],
-            curly: ["error", "all"],
-            "no-var": "error",
-            "no-duplicate-imports": "error",
-            "object-shorthand": "error",
-            "no-useless-return": "error",
-            "no-else-return": "error",
+            // type-aware safety
+            "@typescript-eslint/no-floating-promises": "error",
+            "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/await-thenable": "error",
+            "@typescript-eslint/require-await": "error",
+            "@typescript-eslint/no-unnecessary-type-assertion": "error",
+            "@typescript-eslint/no-unsafe-argument": "error",
+            "@typescript-eslint/no-unsafe-assignment": "error",
+            "@typescript-eslint/no-unsafe-call": "error",
+            "@typescript-eslint/no-unsafe-member-access": "error",
+            "@typescript-eslint/no-unsafe-return": "error",
+            "@typescript-eslint/restrict-template-expressions": [
+                "error",
+                {
+                    allowNumber: true,
+                    allowBoolean: true,
+                    allowNullish: true,
+                },
+            ],
+
+            // intentionally off
+            "@typescript-eslint/explicit-function-return-type": "off",
+            "@typescript-eslint/explicit-module-boundary-types": "off",
         },
     },
 
     {
-        files: ["**/*.test.ts"],
+        files: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/__tests__/**/*.ts"],
         rules: {
             "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-non-null-assertion": "off",
+            "@typescript-eslint/no-unsafe-argument": "off",
+            "@typescript-eslint/no-unsafe-assignment": "off",
+            "@typescript-eslint/no-unsafe-call": "off",
+            "@typescript-eslint/no-unsafe-member-access": "off",
+            "@typescript-eslint/unbound-method": "off",
+            "@typescript-eslint/prefer-promise-reject-errors": "off",
             "no-console": "off",
         },
     },
@@ -52,16 +129,11 @@ export default defineConfig([
     },
 
     {
-        files: ["src/grpc/generated/**/*.ts"],
-        rules: {
-            "@typescript-eslint/no-explicit-any": "off",
-        },
-    },
-
-    {
         files: ["src/middleware/request.middleware.ts"],
         rules: {
             "@typescript-eslint/no-namespace": "off",
         },
     },
+
+    eslintConfigPrettier,
 ]);

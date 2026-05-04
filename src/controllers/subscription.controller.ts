@@ -1,11 +1,17 @@
 import path from "node:path";
-import type { Request, Response, NextFunction } from "express";
+
+import type { NextFunction, Request, Response } from "express";
+
+import type {
+    ApiResponse,
+    CreateSubscriptionRequest,
+    ListSubscriptionsRequest,
+    TokenParams,
+} from "../dto/subscription.dto.js";
 import { subscriptionService } from "../services/subscription.service.js";
 import { AppError } from "../utils/errors.js";
-import type { CreateSubscriptionRequest, ListSubscriptionsRequest, TokenParams, ApiResponse } from "../dto/subscription.dto.js";
 
-type ControllerMethod = (req: Request, res: Response, next: NextFunction) => Promise<void>;
-
+type ControllerMethod = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;
 class SubscriptionController {
     subscribe: ControllerMethod = async (req, res) => {
         const { email, repo } = req.validatedBody as CreateSubscriptionRequest;
@@ -15,7 +21,7 @@ class SubscriptionController {
         const response: ApiResponse = {
             message: "Subscription successful. Confirmation email sent.",
         };
-        
+
         res.status(201).json(response);
     };
 
@@ -25,9 +31,9 @@ class SubscriptionController {
         await subscriptionService.confirm(token);
 
         const response: ApiResponse = {
-            message: "Subscription confirmed successfully"
+            message: "Subscription confirmed successfully",
         };
-        
+
         res.status(200).json(response);
     };
 
@@ -52,9 +58,9 @@ class SubscriptionController {
         await subscriptionService.unsubscribe(token);
 
         const response: ApiResponse = {
-            message: "Unsubscribed successfully"
+            message: "Unsubscribed successfully",
         };
-        
+
         res.status(200).json(response);
     };
 
@@ -80,7 +86,7 @@ class SubscriptionController {
         res.status(200).json(result);
     };
 
-    subscriptionsPage: ControllerMethod = async (req, res) => {
+    subscriptionsPage: ControllerMethod = (req, res) => {
         res.status(200).sendFile(path.resolve(process.cwd(), "public", "subscriptions.html"));
     };
 }

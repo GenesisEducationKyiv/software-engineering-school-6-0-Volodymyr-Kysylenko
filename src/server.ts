@@ -5,14 +5,13 @@ import { env } from "./config/env.js";
 // database
 import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
-// services
-import { emailService } from "./services/email.service.js";
-import { scannerService } from "./services/scanner.service.js";
-import { metricsService } from "./services/metrics.service.js";
-import { cacheService } from "./services/cache.service.js";
-
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
+import { cacheService } from "./services/cache.service.js";
+// services
+import { emailService } from "./services/email.service.js";
+import { metricsService } from "./services/metrics.service.js";
+import { scannerService } from "./services/scanner.service.js";
 
 const { NODE_ENV, PORT, GRPC_PORT, SCAN_INTERVAL_MS } = env;
 
@@ -62,7 +61,7 @@ async function bootstrap() {
             .then(() => {
                 console.log("Scanner iteration completed");
             })
-            .catch((error) => {
+            .catch((error: unknown) => {
                 console.error("Scanner iteration failed", error);
             });
     }, SCAN_INTERVAL_MS);
@@ -73,29 +72,32 @@ async function bootstrap() {
         .then(() => {
             console.log("Initial scanner run completed");
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
             console.error("Initial scanner run failed", error);
         });
 }
 
-void bootstrap().catch(async (error) => {
+void bootstrap().catch(async (error: unknown) => {
     console.error("Application bootstrap failed", error);
     await cacheService.disconnect();
     await pool.end();
     process.exit(1);
 });
 
-// Graceful shutdown to ensure all resources are properly released
-process.on("SIGINT", async () => {
-    console.log("Received SIGINT, shutting down gracefully...");
+async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
+    console.log(`Received ${signal}, shutting down gracefully...`);
+
     await cacheService.disconnect();
     await pool.end();
+
     process.exit(0);
+}
+
+// Graceful shutdown to ensure all resources are properly released
+process.on("SIGINT", () => {
+    void shutdown("SIGINT");
 });
 
-process.on("SIGTERM", async () => {
-    console.log("Received SIGTERM, shutting down gracefully...");
-    await cacheService.disconnect();
-    await pool.end();
-    process.exit(0);
+process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
 });

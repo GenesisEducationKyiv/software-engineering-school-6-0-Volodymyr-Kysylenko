@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { AppError } from "../utils/errors.js";
 import { parseRepo, validateEmail } from "../utils/validators.js";
 

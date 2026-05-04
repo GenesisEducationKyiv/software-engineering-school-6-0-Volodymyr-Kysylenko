@@ -7,7 +7,7 @@ info:
 basePath: "/api"
 tags:
     - name: "subscription"
-      description: "Subscription management operations"  
+      description: "Subscription management operations"
 paths:
     /subscribe:
         post:

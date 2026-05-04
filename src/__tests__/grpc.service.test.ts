@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createGrpcServer } from "../grpc/server.js";
-import { createGrpcClient } from "../grpc/client.js";
 import * as grpc from "@grpc/grpc-js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
 import { env } from "../config/env.js";
+import { createGrpcClient } from "../grpc/client.js";
+import { createGrpcServer } from "../grpc/server.js";
 
 describe("gRPC Subscription Service", () => {
     let server: grpc.Server;
