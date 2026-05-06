@@ -9,17 +9,27 @@
         "build": "pnpm run proto:gen && tsc -p tsconfig.json",
         "start": "dotenv -e .env.production -- node dist/server.js",
         "start:dev": "dotenv -e .env.development -- node dist/server.js",
-        "lint": "eslint src",
-        "lint:fix": "eslint src --fix",
+        "lint": "eslint . ",
+        "lint:fix": "eslint . --fix",
         "test": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run",
         "test:coverage": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run --coverage",
         "test:watch": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest",
         "test:ci": "dotenv -e .env.test.ci -- cross-env NODE_ENV=test vitest run",
         "migrate": "dotenv -e .env.development -- tsx src/db/migrate.ts",
         "migrate:prod": "dotenv -e .env.production -- tsx src/db/migrate.ts",
-        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto && node scripts/fix-generated-imports.cjs",
+        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto --importFileExtension=.js",
         "format": "prettier . --write",
-        "format:check": "prettier . --check"
+        "format:check": "prettier . --check",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "*.{ts,js,json,md,yml,yaml}": [
+            "prettier --write"
+        ],
+        "*.ts": [
+            "eslint --fix"
+        ]
     },
     "dependencies": {
         "@grpc/grpc-js": "^1.12.2",
@@ -52,7 +62,9 @@
         "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-simple-import-sort": "^13.0.0",
         "eslint-plugin-unused-imports": "^4.4.1",
+        "husky": "^9.1.7",
         "jiti": "^2.6.1",
+        "lint-staged": "^17.0.2",
         "prettier": "^3.8.3",
         "tsx": "^4.19.2",
         "typescript": "^5.9.3",

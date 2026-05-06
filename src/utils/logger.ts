@@ -23,9 +23,14 @@ export class ConsoleLogger implements Logger {
         }
     }
 
-    warn(message: string, meta?: Record<string, unknown>): void {
+    warn(message: string, error?: unknown, meta?: Record<string, unknown>): void {
         if (this.shouldLog("warn")) {
-            this.log("WARN", message, meta);
+            const errorMeta =
+                error instanceof Error
+                    ? { error: error.message, stack: error.stack, ...meta }
+                    : { error: String(error), ...meta };
+
+            this.log("WARN", message, errorMeta);
         }
     }
 

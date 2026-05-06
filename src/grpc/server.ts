@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
+import { logger } from "../utils/logger.js";
 import type { ProtoGrpcType } from "./generated/subscription.js";
 import { subscriptionHandlers } from "./subscription.handlers.js";
 
@@ -41,7 +42,7 @@ export async function startGrpcServer(port: number): Promise<void> {
                 return;
             }
 
-            console.log(`gRPC server started on port ${boundPort}`);
+            logger.info(`gRPC server started on port ${boundPort}`);
             resolve();
         });
     });

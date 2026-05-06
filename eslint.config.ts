@@ -14,7 +14,6 @@ export default defineConfig([
         "coverage/**",
         "proto/**",
         "src/grpc/generated/**",
-        "scripts/**",
         "eslint.config.ts",
     ]),
 
@@ -152,7 +151,7 @@ export default defineConfig([
     },
 
     {
-        files: ["src/server.ts", "src/db/migrate.ts", "src/utils/logger.ts", "src/grpc/server.ts"],
+        files: ["src/utils/logger.ts"],
         rules: {
             "no-console": "off",
         },

@@ -8,7 +8,6 @@ export default defineConfig({
                 "node_modules/",
                 "dist/",
                 "public/",
-                "scripts/",
                 "coverage/",
                 "src/server.ts",
                 "src/app.ts",
