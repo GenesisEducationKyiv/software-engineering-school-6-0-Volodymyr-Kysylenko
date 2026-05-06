@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
+import { env } from "../config/env.js";
 import type { ProtoGrpcType } from "./generated/subscription.js";
 import type { ConfirmRequest } from "./generated/subscription/ConfirmRequest.js";
 import type { ConfirmResponse__Output } from "./generated/subscription/ConfirmResponse.js";
@@ -44,20 +45,24 @@ function resolveGrpcResponse<T>(
     resolve(response);
 }
 
-export function createGrpcClient(serverAddress = "localhost:50051"): SubscriptionServiceClient {
+export function createGrpcClient(serverAddress = `localhost:${env.GRPC_PORT}`): SubscriptionServiceClient {
     return new subscriptionProto.SubscriptionService(serverAddress, grpc.credentials.createInsecure());
+}
+
+const grpcClient = createGrpcClient();
+
+export function getGrpcClient(): SubscriptionServiceClient {
+    return grpcClient;
 }
 
 export async function subscribeViaGrpc(email: string, repo: string): Promise<SubscribeResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
-
         const request: SubscribeRequest = {
             email,
             repo,
         };
 
-        client.Subscribe(request, (error, response) => {
+        grpcClient.Subscribe(request, (error, response) => {
             if (error) {
                 reject(error);
                 return;
@@ -69,13 +74,11 @@ export async function subscribeViaGrpc(email: string, repo: string): Promise<Sub
 
 export async function confirmViaGrpc(token: string): Promise<ConfirmResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
-
         const request: ConfirmRequest = {
             token,
         };
 
-        client.Confirm(request, (error, response) => {
+        grpcClient.Confirm(request, (error, response) => {
             if (error) {
                 reject(error);
                 return;
@@ -88,13 +91,11 @@ export async function confirmViaGrpc(token: string): Promise<ConfirmResponse__Ou
 
 export async function unsubscribeViaGrpc(token: string): Promise<UnsubscribeResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
-
         const request: UnsubscribeRequest = {
             token,
         };
 
-        client.Unsubscribe(request, (error, response) => {
+        grpcClient.Unsubscribe(request, (error, response) => {
             if (error) {
                 reject(error);
                 return;
@@ -107,13 +108,11 @@ export async function unsubscribeViaGrpc(token: string): Promise<UnsubscribeResp
 
 export async function getSubscriptionsViaGrpc(email: string): Promise<GetSubscriptionsResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
-
         const request: GetSubscriptionsRequest = {
             email,
         };
 
-        client.GetSubscriptions(request, (error, response) => {
+        grpcClient.GetSubscriptions(request, (error, response) => {
             if (error) {
                 reject(error);
                 return;

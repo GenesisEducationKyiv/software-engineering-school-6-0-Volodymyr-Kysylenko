@@ -15,7 +15,7 @@ export interface HealthCheckResult {
 }
 
 export class HealthService {
-    private checks = new Map<string, () => Promise<HealthCheck>>();
+    private readonly checks = new Map<string, () => Promise<HealthCheck>>();
     private readonly version: string;
 
     constructor(version: string = process.env.npm_package_version ?? "1.0.0") {

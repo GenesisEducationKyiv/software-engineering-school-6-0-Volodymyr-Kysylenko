@@ -6,176 +6,147 @@ import { AppError } from "../utils/errors.js";
 import type { SubscriptionServiceHandlers } from "./generated/subscription/SubscriptionService.js";
 import { mapHttpToGrpcStatus, validateGrpcRequest } from "./validation.utils.js";
 
+function createGrpcError(code: grpc.status, details: string): grpc.ServiceError {
+    return {
+        name: "ServiceError",
+        message: details,
+        code,
+        details,
+        metadata: new grpc.Metadata(),
+    };
+}
+
+function handleGrpcError(error: unknown): grpc.ServiceError {
+    if (error instanceof AppError) {
+        return createGrpcError(mapHttpToGrpcStatus(error.statusCode), error.message);
+    }
+
+    return createGrpcError(grpc.status.INTERNAL, "Internal server error");
+}
+
+async function handleSubscribe(
+    call: Parameters<SubscriptionServiceHandlers["Subscribe"]>[0],
+    callback: Parameters<SubscriptionServiceHandlers["Subscribe"]>[1],
+): Promise<void> {
+    try {
+        const { email, repo } = call.request;
+
+        const validation = validateGrpcRequest({ email, repo }, CreateSubscriptionDto);
+
+        if (!validation.success) {
+            callback(validation.error);
+            return;
+        }
+
+        await subscriptionService.subscribe(validation.data);
+
+        callback(null, {
+            message: "Subscription successful. Confirmation email sent.",
+        });
+    } catch (error) {
+        callback(handleGrpcError(error));
+    }
+}
+
+async function handleConfirm(
+    call: Parameters<SubscriptionServiceHandlers["Confirm"]>[0],
+    callback: Parameters<SubscriptionServiceHandlers["Confirm"]>[1],
+): Promise<void> {
+    try {
+        const { token } = call.request;
+
+        const validation = validateGrpcRequest({ token }, TokenParamsDto);
+
+        if (!validation.success) {
+            callback(validation.error);
+            return;
+        }
+
+        await subscriptionService.confirm(validation.data.token);
+
+        callback(null, {
+            message: "Subscription confirmed successfully",
+        });
+    } catch (error) {
+        callback(handleGrpcError(error));
+    }
+}
+
+async function handleUnsubscribe(
+    call: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[0],
+    callback: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[1],
+): Promise<void> {
+    try {
+        const { token } = call.request;
+
+        const validation = validateGrpcRequest({ token }, TokenParamsDto);
+
+        if (!validation.success) {
+            callback(validation.error);
+            return;
+        }
+
+        await subscriptionService.unsubscribe(validation.data.token);
+
+        callback(null, {
+            message: "Unsubscribed successfully",
+        });
+    } catch (error) {
+        callback(handleGrpcError(error));
+    }
+}
+
+async function handleGetSubscriptions(
+    call: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[0],
+    callback: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[1],
+): Promise<void> {
+    try {
+        const { email } = call.request;
+
+        const validation = validateGrpcRequest({ email }, ListSubscriptionsDto);
+
+        if (!validation.success) {
+            callback(validation.error);
+            return;
+        }
+
+        const subscriptions = await subscriptionService.listByEmail(validation.data.email);
+
+        callback(null, {
+            subscriptions: subscriptions.map((sub) => ({
+                email: sub.email,
+                repo: sub.repo,
+                confirmed: sub.confirmed,
+                last_seen_tag: sub.last_seen_tag ?? "",
+            })),
+        });
+    } catch (error) {
+        callback(handleGrpcError(error));
+    }
+}
+
 export const subscriptionHandlers: SubscriptionServiceHandlers = {
     Subscribe(call, callback) {
-        void (async () => {
-            try {
-                const request = call.request;
-                const { email, repo } = request;
-
-                const validation = validateGrpcRequest({ email, repo }, CreateSubscriptionDto);
-                if (!validation.success) {
-                    return callback(validation.error);
-                }
-
-                const validatedData = validation.data;
-                if (!validatedData) {
-                    return callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Validation failed to return data",
-                    });
-                }
-
-                await subscriptionService.subscribe(validatedData);
-
-                callback(null, {
-                    message: "Subscription successful. Confirmation email sent.",
-                });
-            } catch (error) {
-                if (error instanceof AppError) {
-                    const grpcCode = mapHttpToGrpcStatus(error.statusCode);
-                    callback({
-                        code: grpcCode,
-                        details: error.message,
-                    });
-                } else {
-                    callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Internal server error",
-                    });
-                }
-            }
-        })();
+        handleSubscribe(call, callback).catch((error: unknown) => {
+            callback(handleGrpcError(error));
+        });
     },
 
     Confirm(call, callback) {
-        void (async () => {
-            try {
-                const request = call.request;
-                const { token } = request;
-
-                const validation = validateGrpcRequest({ token }, TokenParamsDto);
-                if (!validation.success) {
-                    return callback(validation.error);
-                }
-
-                const validatedData = validation.data;
-                if (!validatedData) {
-                    return callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Validation failed to return data",
-                    });
-                }
-
-                const { token: validatedToken } = validatedData;
-                await subscriptionService.confirm(validatedToken);
-
-                callback(null, {
-                    message: "Subscription confirmed successfully",
-                });
-            } catch (error) {
-                if (error instanceof AppError) {
-                    const grpcCode = mapHttpToGrpcStatus(error.statusCode);
-                    callback({
-                        code: grpcCode,
-                        details: error.message,
-                    });
-                } else {
-                    callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Internal server error",
-                    });
-                }
-            }
-        })();
+        handleConfirm(call, callback).catch((error: unknown) => {
+            callback(handleGrpcError(error));
+        });
     },
 
     Unsubscribe(call, callback) {
-        void (async () => {
-            try {
-                const request = call.request;
-                const { token } = request;
-
-                const validation = validateGrpcRequest({ token }, TokenParamsDto);
-                if (!validation.success) {
-                    return callback(validation.error);
-                }
-
-                const validatedData = validation.data;
-                if (!validatedData) {
-                    return callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Validation failed to return data",
-                    });
-                }
-
-                const { token: validatedToken } = validatedData;
-                await subscriptionService.unsubscribe(validatedToken);
-
-                callback(null, {
-                    message: "Unsubscribed successfully",
-                });
-            } catch (error) {
-                if (error instanceof AppError) {
-                    const grpcCode = mapHttpToGrpcStatus(error.statusCode);
-                    callback({
-                        code: grpcCode,
-                        details: error.message,
-                    });
-                } else {
-                    callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Internal server error",
-                    });
-                }
-            }
-        })();
+        handleUnsubscribe(call, callback).catch((error: unknown) => {
+            callback(handleGrpcError(error));
+        });
     },
 
     GetSubscriptions(call, callback) {
-        void (async () => {
-            try {
-                const request = call.request;
-                const { email } = request;
-
-                const validation = validateGrpcRequest({ email }, ListSubscriptionsDto);
-                if (!validation.success) {
-                    return callback(validation.error);
-                }
-
-                const validatedData = validation.data;
-                if (!validatedData) {
-                    return callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Validation failed to return data",
-                    });
-                }
-
-                const { email: validatedEmail } = validatedData;
-                const subscriptions = await subscriptionService.listByEmail(validatedEmail);
-
-                callback(null, {
-                    subscriptions: subscriptions.map((sub) => ({
-                        email: sub.email,
-                        repo: sub.repo,
-                        confirmed: sub.confirmed,
-                        last_seen_tag: sub.last_seen_tag ?? "",
-                    })),
-                });
-            } catch (error) {
-                if (error instanceof AppError) {
-                    const grpcCode = mapHttpToGrpcStatus(error.statusCode);
-                    callback({
-                        code: grpcCode,
-                        details: error.message,
-                    });
-                } else {
-                    callback({
-                        code: grpc.status.INTERNAL,
-                        details: "Internal server error",
-                    });
-                }
-            }
-        })();
+        handleGetSubscriptions(call, callback).catch((error: unknown) => {
+            callback(handleGrpcError(error));
+        });
     },
 };

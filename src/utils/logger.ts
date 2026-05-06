@@ -7,9 +7,9 @@ export interface Logger {
     debug(message: string, meta?: Record<string, unknown>): void;
 }
 export class ConsoleLogger implements Logger {
-    private logLevels = ["error", "warn", "info", "debug"];
+    private readonly logLevels = ["error", "warn", "info", "debug"];
 
-    constructor(private context = "App") {}
+    constructor(private readonly context = "App") {}
 
     private shouldLog(level: string): boolean {
         const currentLevelIndex = this.logLevels.indexOf(env.LOG_LEVEL);

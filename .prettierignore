@@ -4,3 +4,4 @@ public
 migrations
 proto
 src/grpc/generated
+pnpm-lock.yaml

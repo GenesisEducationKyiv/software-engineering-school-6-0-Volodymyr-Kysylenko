@@ -9,7 +9,7 @@ import { pool } from "../../db/pool.js";
 
 describe("Subscription API Integration Tests", () => {
     let app: Express;
-    let server: Server;
+    let server: Server | undefined;
     let canConnectToDatabase = false;
     const baseURL = env.APP_BASE_URL || `http://localhost:${env.PORT}`;
 
@@ -17,7 +17,7 @@ describe("Subscription API Integration Tests", () => {
         console.log("Test environment:", {
             NODE_ENV: env.NODE_ENV,
             PORT: env.PORT,
-            DATABASE_URL: env.DATABASE_URL?.replace(/:[^:@]*@/, ":***@"), // Hide password
+            DATABASE_URL: env.DATABASE_URL.replace(/:[^:@]*@/, ":***@"), // Hide password
             REDIS_URL: env.REDIS_URL,
             APP_BASE_URL: env.APP_BASE_URL,
             SMTP_HOST: env.SMTP_HOST,
@@ -195,7 +195,7 @@ describe("Subscription API Integration Tests", () => {
 
             const requests = Array(101)
                 .fill(null)
-                .map(() => fetch(`${baseURL}/api/health`));
+                .map(async () => fetch(`${baseURL}/api/health`));
 
             const responses = await Promise.all(requests);
 

@@ -4,15 +4,32 @@ import { githubService } from "./github.service.js";
 import { metricsService } from "./metrics.service.js";
 import { groupSubscriptionsByRepo, shouldNotifyForTag } from "./scanner.logic.js";
 
-let isRunning = false;
+class ScannerLock {
+    private isLocked = false;
+
+    acquire(): boolean {
+        if (this.isLocked) {
+            return false;
+        }
+
+        this.isLocked = true;
+        return true;
+    }
+
+    release(): void {
+        this.isLocked = false;
+    }
+}
+
+const scannerLock = new ScannerLock();
 
 export const scannerService = {
     async scanOnce(): Promise<void> {
-        if (isRunning) {
+        const acquired = scannerLock.acquire();
+
+        if (!acquired) {
             return;
         }
-
-        isRunning = true;
 
         try {
             const subscriptions = await subscriptionRepository.listConfirmedActive();
@@ -24,6 +41,7 @@ export const scannerService = {
 
             for (const [repoFullName, repoSubscriptions] of repoMap.entries()) {
                 const first = repoSubscriptions[0];
+
                 const latestRelease = await githubService.getLatestRelease({
                     owner: first.repo_owner,
                     repo: first.repo_name,
@@ -35,6 +53,7 @@ export const scannerService = {
                 }
 
                 const hasAnyStale = repoSubscriptions.some((item) => shouldNotifyForTag(item, latestRelease.tagName));
+
                 if (!hasAnyStale) {
                     continue;
                 }
@@ -62,7 +81,7 @@ export const scannerService = {
             metricsService.recordScannerRun("error");
             throw error;
         } finally {
-            isRunning = false;
+            scannerLock.release();
         }
     },
 };

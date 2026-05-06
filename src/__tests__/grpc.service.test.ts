@@ -7,7 +7,7 @@ import { createGrpcServer } from "../grpc/server.js";
 
 describe("gRPC Subscription Service", () => {
     let server: grpc.Server;
-    let client: any;
+    let client: ReturnType<typeof createGrpcClient>;
     const testPort = env.GRPC_PORT;
 
     beforeAll(async () => {
@@ -27,14 +27,11 @@ describe("gRPC Subscription Service", () => {
     });
 
     afterAll(async () => {
-        if (client) {
-            client.close();
-        }
-        if (server) {
-            await new Promise<void>((resolve) => {
-                server.tryShutdown(() => resolve());
-            });
-        }
+        client.close();
+
+        await new Promise<void>((resolve) => {
+            server.tryShutdown(() => resolve());
+        });
     });
 
     it("should reject invalid subscription request", async () => {

@@ -9,10 +9,9 @@ import { AppError } from "../utils/errors.js";
 type ControllerMethod = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
 class MetricsController {
-    private healthService: HealthService;
+    private readonly healthService = new HealthService();
 
     constructor() {
-        this.healthService = new HealthService();
         this.setupHealthChecks();
     }
 

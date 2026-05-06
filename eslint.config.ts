@@ -11,6 +11,7 @@ export default defineConfig([
         "dist/**",
         "public/**",
         "migrations/**",
+        "coverage/**",
         "proto/**",
         "src/grpc/generated/**",
         "scripts/**",
@@ -56,6 +57,10 @@ export default defineConfig([
             "object-shorthand": "error",
             "prefer-const": "error",
             "no-constant-condition": ["error", { checkLoops: false }],
+            "no-throw-literal": "error",
+            "no-return-await": "error",
+            "require-atomic-updates": "error",
+            "consistent-return": "error",
 
             // imports
             "import/first": "error",
@@ -79,6 +84,31 @@ export default defineConfig([
                     caughtErrorsIgnorePattern: "^_",
                 },
             ],
+            "@typescript-eslint/consistent-type-imports": [
+                "error",
+                {
+                    prefer: "type-imports",
+                    fixStyle: "inline-type-imports",
+                },
+            ],
+            "@typescript-eslint/no-import-type-side-effects": "error",
+            "@typescript-eslint/prefer-nullish-coalescing": "error",
+            "@typescript-eslint/prefer-optional-chain": "error",
+            "@typescript-eslint/prefer-includes": "error",
+            "@typescript-eslint/prefer-string-starts-ends-with": "error",
+            "@typescript-eslint/prefer-readonly": "warn",
+            "@typescript-eslint/switch-exhaustiveness-check": "error",
+            "@typescript-eslint/no-unnecessary-condition": "warn",
+            "@typescript-eslint/no-confusing-void-expression": [
+                "error",
+                {
+                    ignoreArrowShorthand: true,
+                    ignoreVoidOperator: true,
+                },
+            ],
+            "@typescript-eslint/only-throw-error": "error",
+            "@typescript-eslint/prefer-promise-reject-errors": "error",
+            "@typescript-eslint/promise-function-async": "error",
 
             // type-aware safety
             "@typescript-eslint/no-floating-promises": "error",

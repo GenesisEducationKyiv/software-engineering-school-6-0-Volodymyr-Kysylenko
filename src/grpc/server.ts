@@ -31,7 +31,7 @@ export function createGrpcServer(): grpc.Server {
     return server;
 }
 
-export function startGrpcServer(port: number): Promise<void> {
+export async function startGrpcServer(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
         const server = createGrpcServer();
 

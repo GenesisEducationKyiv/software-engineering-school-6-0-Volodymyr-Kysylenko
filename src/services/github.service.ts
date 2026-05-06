@@ -101,7 +101,7 @@ export const githubService = {
 
         const cached = await cacheService.get<LatestRelease | null>(cacheKey);
         if (cached !== null) {
-            logger.debug("Latest release found in cache", { repo: input.fullName, tagName: cached?.tagName });
+            logger.debug("Latest release found in cache", { repo: input.fullName, tagName: cached.tagName });
             return cached;
         }
 

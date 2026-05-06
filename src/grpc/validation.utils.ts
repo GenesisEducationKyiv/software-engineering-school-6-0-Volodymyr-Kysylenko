@@ -1,6 +1,6 @@
 import type { StatusObject } from "@grpc/grpc-js";
 import * as grpc from "@grpc/grpc-js";
-import { ZodError, ZodSchema } from "zod";
+import { ZodError, type ZodSchema } from "zod";
 
 type GrpcValidationError = Partial<StatusObject> & {
     code: grpc.status;
