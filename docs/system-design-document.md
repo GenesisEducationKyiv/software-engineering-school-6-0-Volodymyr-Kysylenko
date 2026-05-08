@@ -1,0 +1,948 @@
+# System Design Document - GitHub Release Notifier
+
+> **Version:** 1.0  
+> **Author:** Volodymyr Kysylenko  
+> **Status:** Active  
+> **Created:** 05.05.2026  
+> **Updated:** 08.05.2026
+
+---
+
+## Table of Contents
+
+1. [System Overview](#1-system-overview)
+2. [High-Level Architecture](#2-high-level-architecture)
+3. [Architecture Style](#3-architecture-style)
+4. [Main Components](#4-main-components)
+5. [REST API Design](#5-rest-api-design)
+6. [gRPC Design](#6-grpc-design)
+7. [Database Design](#7-database-design)
+8. [Caching Strategy](#8-caching-strategy)
+9. [Validation and Error Handling](#9-validation-and-error-handling)
+10. [Security Considerations](#10-security-considerations)
+11. [Scalability Considerations](#11-scalability-considerations)
+12. [Reliability Considerations](#12-reliability-considerations)
+13. [Observability and Monitoring](#13-observability-and-monitoring)
+14. [CI/CD Pipeline](#14-cicd-pipeline)
+15. [Testing Strategy](#15-testing-strategy)
+16. [Deployment Architecture](#16-deployment-architecture)
+17. [Trade-offs and Limitations](#17-trade-offs-and-limitations)
+18. [Future Improvements](#18-future-improvements)
+
+---
+
+## 1. System Overview
+
+**GitHub Release Notifier** is a backend service that allows users to subscribe to GitHub repositories and receive email notifications when a new release is published. Users register by providing their email address and a repository identifier. After confirming ownership of their email via a confirmation link, they receive automatic notifications whenever a watched repository tags a new release on GitHub.
+
+The system exposes a **REST API** for browser-based interactions (web UI and direct HTTP clients), a **gRPC API** for programmatic or service-to-service usage.
+
+A background scanner periodically polls the GitHub API for new releases and sends email notifications. PostgreSQL provides persistent storage, and Redis optionally caches GitHub API responses to stay within GitHub's rate limits.
+
+### Core User Journeys
+
+<table>
+    <thead>
+        <tr>
+            <th>Journey</th>
+            <th>HTTP Clients</th>
+            <th>Web UI</th>
+            <th>gRPC</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Subscribe to a repository</td>
+            <td><code>POST /api/subscribe</code></td>
+            <td><code>/</code></td>
+            <td><code>Subscribe</code></td>
+        </tr>
+        <tr>
+            <td>Confirm email ownership</td>
+            <td><code>GET /api/confirm/:token</code></td>
+            <td><code>/confirm/:token</code></td>
+            <td><code>Confirm</code></td>
+        </tr>
+        <tr>
+            <td>Unsubscribe from a repository</td>
+            <td><code>GET /api/unsubscribe/:token</code></td>
+            <td><code>/unsubscribe/:token</code></td>
+            <td><code>Unsubscribe</code></td>
+        </tr>
+        <tr>
+            <td>List active subscriptions</td>
+            <td><code>GET /api/subscriptions?email=...</code></td>
+            <td><code>/subscriptions</code></td>
+            <td><code>GetSubscriptions</code></td>
+        </tr>
+        <tr>
+            <td>Receive release notification</td>
+            <td colspan="3">
+                Automatic, triggered by background scanner
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+---
+
+## 2. High-Level Architecture
+
+```mermaid
+graph TD
+    subgraph Clients
+        Browser["Browser"]
+        RESTClient["REST Client"]
+        GRPCClient["gRPC Client"]
+    end
+
+    subgraph Edge
+        CF["Cloudflare"]
+        Nginx["Nginx (Reverse Proxy / TLS Termination)"]
+    end
+
+    subgraph Application["Application"]
+        Metrics["Metrics Endpoint"]
+        REST["REST API"]
+        GRPC["gRPC Server"]
+
+        subgraph SharedServices["Shared Services"]
+            SubscriptionService["Subscription Service"]
+            GitHubService["GitHub Service"]
+            EmailService["Email Service"]
+            CacheService["Cache Service"]
+            ScannerService["Scanner Service"]
+            HealthService["Health Service"]
+            MetricsService["Metrics Service"]
+        end
+    end
+
+    subgraph Data
+        PG["PostgreSQL (Primary Storage)"]
+        Redis["Redis (Optional Cache)"]
+    end
+
+    subgraph External
+        GitHub["GitHub REST API"]
+        SMTP["SMTP Server"]
+    end
+
+    subgraph Observability
+        Prometheus["Prometheus"]
+    end
+
+    Browser -->|HTTPS| CF
+    RESTClient -->|HTTPS| CF
+    GRPCClient -->|gRPC over HTTP/2| CF
+
+    CF -->|HTTPS| Nginx
+    Nginx -->|HTTP| REST
+    Nginx -->|gRPC / HTTP2| GRPC
+
+    REST --> SharedServices
+    GRPC --> SharedServices
+
+    SubscriptionService --> PG
+    CacheService --> Redis
+
+    GitHubService -->|fetch releases| GitHub
+    EmailService -->|send email| SMTP
+
+    Prometheus -->|scrape| MetricsService
+```
+
+---
+
+## 3. Architecture Style
+
+### Monolithic Modular Architecture
+
+The system is implemented as a **single deployable unit** with clear internal module boundaries. This choice was deliberate and fits the scale of this project.
+
+**Why a monolith:**
+
+- **Appropriate for an educational project.** A monolithic architecture makes it easier to learn and apply software engineering best practices, including clean architecture, modular design, validation, testing, CI/CD, observability, and integration patterns, without the additional complexity of distributed systems.
+- **No high-load requirements.** The expected usage is limited and predictable, so horizontal scaling, service decomposition, and distributed infrastructure would add unnecessary complexity.
+- **Focus on engineering fundamentals.** A monolith allows concentrating on code quality, modular structure, validation, error handling, observability, and deployment practices without the overhead of microservice coordination.
+- **Lower operational overhead.** For a learning project, maintaining one deployable unit is more practical than managing multiple services, network boundaries, separate pipelines, and distributed debugging.
+
+The internal structure enforces a **layered separation of concerns**:
+
+```
+Routes → Middleware → Controllers → Services → Repositories → Database
+```
+
+Each layer has a single responsibility and communicates only with the layer directly below it, making the codebase testable and the boundaries explicit.
+
+### Why Both REST and gRPC
+
+Supporting both **REST** and **gRPC** was part of the project requirements. At the same time, implementing both approaches provides practical experience with different API paradigms and integration patterns.
+
+REST is well suited for browser-based flows, Swagger/OpenAPI documentation, manual testing, and simple external integrations using HTTP and JSON. gRPC is more suitable for service-to-service communication, strongly typed contracts through Protobuf schemas, and more efficient internal integrations with lower serialization overhead.
+
+Using both interfaces also helps better understand API design trade-offs, transport protocols, contract management, and how the same business logic can be exposed through different communication layers.
+
+Both surfaces share the same underlying service and repository layer. The API boundary is purely presentational – no business logic is duplicated.
+
+### Why PostgreSQL
+
+PostgreSQL was used because it was part of the project requirements. For a relatively simple educational project, a lighter database could also be sufficient.
+
+But PostgreSQL provides advantages if the system grows: mature indexing, partial indexes for frequent scanner queries, reliable transactional behavior, extensions such as `pgcrypto`, and good scalability options compared with simpler embedded or lightweight databases.
+
+### Why Redis
+
+Redis was used because it was part of the project requirements. For a simple educational project, a lighter caching solution could also be sufficient, for example an in-process `Map`, `lru-cache`, or `node-cache`. However, Redis provides a more production-oriented caching layer and better represents how caching is commonly handled outside a single application process.
+
+In this project, Redis is used exclusively as a read-through cache for GitHub API responses. GitHub's unauthenticated rate limit is 60 requests/hour per IP, while the authenticated limit is 5,000 requests/hour. Caching repository existence checks and latest release lookups dramatically reduces API call frequency and helps avoid rate-limit pressure.
+
+Cache entries have a configurable TTL, so cached data is automatically considered stale after a defined period. After expiry, the system falls back to a live GitHub API call and refreshes the cache.
+
+Redis is optional – the system degrades gracefully to direct API calls when Redis is unavailable or disabled. No functionality is lost.
+
+---
+
+## 4. Main Components
+
+### 4.1 Express Application (`src/app.ts`)
+
+The Express application is constructed in a factory function (`createApp`) to facilitate testing. It registers:
+
+- Security middleware: `helmet` (HTTP security headers), `express-rate-limit` (request throttling).
+- Request middleware: request ID injection, structured request logging.
+- Origin validation middleware (allowlist-based CORS guard).
+- Body parsing with a configurable size limit (`BODY_LIMIT`).
+- Subscription API router (`/api`).
+- HTML page router.
+- Metrics router (`/metrics`).
+- Health router (`/health`).
+- Swagger UI (`/api-docs`).
+
+### 4.2 gRPC Server (`src/grpc/server.ts`)
+
+A standalone gRPC server bootstrapped alongside Express on a separate port (`GRPC_PORT`, default `50051`). The server loads the `subscription.proto` schema at startup via `@grpc/proto-loader` and registers the `SubscriptionService` handlers. It runs on `0.0.0.0` with insecure credentials, TLS termination is handled at the infrastructure layer by Nginx.
+
+### 4.3 Subscription Service (`src/services/subscription.service.ts`)
+
+Orchestrates all subscription lifecycle operations:
+
+- **Subscribe:** validates that the repository exists on GitHub (with cache), checks for a duplicate subscription, creates the record with a cryptographically secure confirm token and unsubscribe token, and dispatches a confirmation email.
+- **Confirm:** marks the subscription as confirmed and sets `confirmed_at`.
+- **Unsubscribe:** sets `unsubscribed_at`, logically deleting the subscription.
+- **List:** returns confirmed, active subscriptions **by email**.
+
+### 4.4 GitHub Service (`src/services/github.service.ts`)
+
+Encapsulates all GitHub REST API interactions:
+
+- `assertRepositoryExists` – verifies a repository is public and accessible before allowing a subscription.
+- `getLatestRelease` – fetches the most recent published release for a repository.
+
+### 4.5 Cache Service (`src/services/cache.service.ts`)
+
+Wraps the `redis` client with a safe interface. If Redis is unreachable or disabled, all cache operations return `null` and execution continues normally.
+
+### 4.6 Scanner Service (`src/services/scanner.service.ts`)
+
+A background job that executes on a configurable interval:
+
+1. Acquires an in-process mutex (`ScannerLock`) to prevent overlapping runs.
+2. Queries all confirmed, active subscriptions.
+3. Groups subscriptions to minimize GitHub API calls (one call per repository regardless of subscriber count).
+4. Fetches the latest release for each repository.
+5. Identifies stale subscriptions.
+6. Sends a release notification email for each stale subscriber.
+
+### 4.7 Email Service (`src/services/email.service.ts`)
+
+Wraps `nodemailer` with:
+
+- A retry loop with exponential back-off.
+- Configurable SMTP connection, greeting, and socket timeouts.
+- Two email templates: **confirmation** and **release notification**.
+
+### 4.8 Metrics Service (`src/services/metrics.service.ts`)
+
+Manages a dedicated `prom-client` registry with the following instruments:
+
+| Metric                                 | Type    | Description                                       |
+| -------------------------------------- | ------- | ------------------------------------------------- |
+| `github_notifier_active_subscriptions` | Gauge   | Current count of active subscriptions             |
+| `github_notifier_api_calls_total`      | Counter | GitHub API calls, labelled by `status` and `type` |
+| `github_notifier_emails_sent_total`    | Counter | Emails dispatched, labelled by `status`           |
+| `github_notifier_scanner_runs_total`   | Counter | Scanner cycles, labelled by `status`              |
+
+Default Node.js process metrics (event loop lag, heap usage, GC duration) are also collected.
+
+### 4.9 Health Service (`src/services/health.service.ts`)
+
+Performs periodic liveness checks against the PostgreSQL pool and Redis client, and exposes the result via `GET /api/health`. The Docker Compose `healthcheck` directive polls this endpoint to determine container readiness.
+
+### 4.10 Repository Layer (`src/repositories/subscription.repository.ts`)
+
+Implements database access via parameterised queries against the PostgreSQL connection pool. There is no ORM – raw SQL is used for full query visibility and control. The repository provides:
+
+- `create` – insert a new subscription record.
+- `findByToken` – lookup by confirm or unsubscribe token.
+- `confirm` – set `confirmed = true`, `confirmed_at = NOW()`.
+- `unsubscribe` – set `unsubscribed_at = NOW()`.
+- `listByEmail` – list confirmed active subscriptions for an email.
+- `listConfirmedActive` – full scan for the background scanner.
+- `updateLastSeenTagByRepo` – batch update `last_seen_tag` after a scan cycle.
+- `countActiveSubscriptions` – for metrics initialization.
+
+---
+
+## 5. REST API Design
+
+All REST endpoints are mounted under the `/api` prefix. Requests and responses use `application/json`. HTML-rendered pages (for browser navigation) are served under the root path `/`.
+
+### Endpoints
+
+| Method | Path                      | Description                         | Auth          |
+| ------ | ------------------------- | ----------------------------------- | ------------- |
+| `POST` | `/api/subscribe`          | Create a new subscription           | None          |
+| `GET`  | `/api/confirm/:token`     | Confirm a subscription              | Token in path |
+| `GET`  | `/api/unsubscribe/:token` | Unsubscribe                         | Token in path |
+| `GET`  | `/api/subscriptions`      | List subscriptions by email         | None          |
+| `GET`  | `/metrics`                | Prometheus metrics scrape endpoint  | Network-level |
+| `GET`  | `/api/health`             | Health check (liveness + readiness) | None          |
+| `GET`  | `/api-docs`               | Swagger UI (OpenAPI 2.0)            | None          |
+
+### REST Request Lifecycle
+
+```mermaid
+   sequenceDiagram
+    participant Client
+    participant Cloudflare
+    participant Nginx
+    participant Express
+    participant Middleware
+    participant Controller
+    participant Service
+    participant Repository
+    participant PostgreSQL
+
+    Client->>Cloudflare: HTTPS Request
+    Cloudflare->>Nginx: HTTPS Request
+    Nginx->>Express: HTTP forwarded request
+    Express->>Middleware: requestId, logger, helmet, rateLimit, origin
+    Middleware->>Middleware: validate
+    Middleware->>Controller: Validated request
+    Controller->>Service: Business operation
+    Service->>Repository: Data access
+    Repository->>PostgreSQL: Parameterized SQL
+    PostgreSQL-->>Repository: Result set
+    Repository-->>Service: Domain object
+    Service-->>Controller: Result
+    Controller-->>Express: JSON response
+    Express-->>Nginx: HTTP response
+    Nginx-->>Cloudflare: HTTPS response
+    Cloudflare-->>Client: HTTPS response
+```
+
+### Design Decisions
+
+- **Token-based flows.** Confirmation and unsubscribe operations are stateless and use opaque tokens.
+- **No authentication.** The system is intentionally open for subscription creation. Abuse is mitigated by rate limiting, origin validation, and the double opt-in confirmation step.
+- **Standard error shape.** All error responses follow a consistent `{ message, code, errors? }` envelope regardless of the error origin (validation, application, or unexpected).
+
+---
+
+## 6. gRPC Design
+
+### 6.1 Proto Schema (`proto/subscription.proto`)
+
+```protobuf
+syntax = "proto3";
+package subscription;
+
+service SubscriptionService {
+  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);
+  rpc Confirm(ConfirmRequest) returns (ConfirmResponse);
+  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
+  rpc GetSubscriptions(GetSubscriptionsRequest) returns (GetSubscriptionsResponse);
+}
+```
+
+The service exposes the same four core operations as the REST API, enabling programmatic clients to consume the system over HTTP/2 with strongly-typed, binary-encoded messages.
+
+### 6.2 gRPC Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant GRPCClient
+    participant Cloudflare
+    participant Nginx
+    participant GRPCServer
+    participant Handler
+    participant ValidationUtils
+    participant Service
+    participant Repository
+    participant PostgreSQL
+
+    GRPCClient->>Cloudflare: gRPC over HTTPS / HTTP/2
+    Cloudflare->>Nginx: gRPC over HTTP/2
+    Nginx->>GRPCServer: Forwarded gRPC call
+    GRPCServer->>Handler: Decoded Protobuf message
+    Handler->>ValidationUtils: Input validation
+    ValidationUtils-->>Handler: Validated input
+    Handler->>Service: Business operation
+    Service->>Repository: Data access
+    Repository->>PostgreSQL: Parameterized SQL
+    PostgreSQL-->>Repository: Result set
+    Repository-->>Service: Domain object
+    Service-->>Handler: Result
+    Handler-->>GRPCServer: Protobuf response
+    GRPCServer-->>Nginx: gRPC response
+    Nginx-->>Cloudflare: gRPC over HTTP/2 response
+    Cloudflare-->>GRPCClient: gRPC response
+```
+
+### Design Decisions
+
+- **Insecure credentials at the application layer.** TLS is not terminated by the gRPC server itself, it is handled upstream by Nginx.
+- **Shared service layer.** gRPC handlers delegate to the same service classes as REST controllers. There is no business logic in the transport layer.
+- **Input validation in handlers.** The validation module performs structural validation on incoming Protobuf messages before passing them to services, mirroring the Zod middleware used in the REST path.
+- **Error mapping.** `AppError` instances are translated to appropriate gRPC status codes.
+- **Generated types.** TypeScript types for the gRPC service and messages are generated from the `.proto` file and stored in `src/grpc/generated/`, ensuring type safety across the gRPC boundary.
+
+---
+
+## 7. Database Design
+
+### 7.1 Logical Model
+
+The current version of the system uses a simple relational model with one main entity: `Subscription`.
+
+A subscription represents a user’s request to receive notifications about releases in a specific GitHub repository.
+
+```mermaid
+erDiagram
+    SUBSCRIPTION {
+        UUID id PK
+        TEXT email
+        TEXT repo_owner
+        TEXT repo_name
+        TEXT repo_full_name
+        BOOLEAN confirmed
+        TEXT confirm_token UK
+        TEXT unsubscribe_token UK
+        TEXT last_seen_tag
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ confirmed_at
+        TIMESTAMPTZ unsubscribed_at
+    }
+```
+
+### 7.2 Physical Schema
+
+The current physical schema uses a single PostgreSQL table: `subscriptions`.
+
+```sql
+CREATE TABLE subscriptions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email             TEXT NOT NULL,
+  repo_owner        TEXT NOT NULL,
+  repo_name         TEXT NOT NULL,
+  repo_full_name    TEXT NOT NULL,
+  confirmed         BOOLEAN NOT NULL DEFAULT FALSE,
+  confirm_token     TEXT NOT NULL UNIQUE,
+  unsubscribe_token TEXT NOT NULL UNIQUE,
+  last_seen_tag     TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  confirmed_at      TIMESTAMPTZ,
+  unsubscribed_at   TIMESTAMPTZ,
+  CONSTRAINT subscriptions_email_repo_unique UNIQUE (email, repo_full_name)
+);
+```
+
+### 7.3 Indexes
+
+| Index                           | Columns                   | Condition                       | Purpose                                           |
+| ------------------------------- | ------------------------- | ------------------------------- | ------------------------------------------------- |
+| `subscriptions_active_repo_idx` | `repo_full_name`          | `WHERE unsubscribed_at IS NULL` | Optimise scanner query: group active subs by repo |
+| `subscriptions_email_idx`       | `email`                   | –                               | Optimise list-by-email queries                    |
+| PK                              | `id`                      | –                               | Row lookup by UUID                                |
+| Unique                          | `confirm_token`           | –                               | O(1) token lookup at confirmation                 |
+| Unique                          | `unsubscribe_token`       | –                               | O(1) token lookup at unsubscription               |
+| Unique                          | `(email, repo_full_name)` | –                               | Prevent duplicate subscriptions                   |
+
+### Design Decisions
+
+- **Soft deletes.** Preserves audit history and simplifies re-subscription logic.
+- **No ORM.** Raw parameterised SQL is used throughout. This avoids ORM overhead, keeps queries explicit and auditable, and removes an external dependency with its own abstraction layer.
+- **`pgcrypto` for UUIDs.** `gen_random_uuid()` generates version-4 UUIDs server-side, avoiding application-side UUID generation and its associated consistency concerns.
+- **Migrations.** Schema changes are applied via numbered SQL migration files (`/migrations`) executed at startup by the `migrate.ts` module.
+
+### Subscription States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending : "POST /subscribe"
+    Pending --> Active : "GET /confirm/{token}"
+    Active --> Unsubscribed : "GET /unsubscribe/{token}"
+    Pending --> Unsubscribed : "GET /unsubscribe/{token}"
+```
+
+> {} notation is used instead of :token to avoid Mermaid parser syntax conflicts.
+
+---
+
+## 8. Caching Strategy
+
+Redis is used as a read-through, TTL-based cache for external GitHub API responses. The application never writes through to GitHub – cache entries are populated on cache miss and expire automatically.
+
+### Cached Data
+
+| Cache Key Pattern               | Content                             | TTL                 |
+| ------------------------------- | ----------------------------------- | ------------------- |
+| `repo_exists:{owner}:{repo}`    | Boolean – repository existence      | `REDIS_TTL_SECONDS` |
+| `latest_release:{owner}:{repo}` | Latest release tag, URL, name, date | `REDIS_TTL_SECONDS` |
+
+### Cache Behavior
+
+```mermaid
+flowchart LR
+    A[Request] --> B{Cache\nEnabled?}
+    B -- No --> F[GitHub API]
+    B -- Yes --> C{Cache\nHit?}
+    C -- Yes --> D[Return Cached Value]
+    C -- No --> F
+    F --> G{API\nSuccess?}
+    G -- Yes --> H[Store in Redis with TTL]
+    H --> I[Return Value]
+    G -- No --> J[Throw AppError]
+```
+
+---
+
+## 9. Validation and Error Handling
+
+### Validation Strategy
+
+All external inputs are validated using **Zod** at two distinct boundaries:
+
+| Boundary            | Mechanism                                                    | Scope                                   |
+| ------------------- | ------------------------------------------------------------ | --------------------------------------- |
+| Environment startup | `EnvSchema.parse(process.env)`                               | All environment variables at boot time  |
+| REST request        | `validateBody`, `validateParams`, `validateQuery` middleware | Request body, path params, query params |
+| gRPC request        | `validation.utils.ts` handler helpers                        | Protobuf message fields                 |
+
+Validation failures throw a `ZodError`, which the centralized error handler converts to a structured `400 Bad Request` response.
+
+### Error Taxonomy
+
+The `AppError` class (`src/utils/errors.ts`) models all known failure modes with typed constructors:
+
+| Factory                  | HTTP Status | gRPC Code            | Use Case                                |
+| ------------------------ | ----------- | -------------------- | --------------------------------------- |
+| `AppError.validation()`  | 400         | `INVALID_ARGUMENT`   | Semantic validation (e.g., repo format) |
+| `AppError.notFound()`    | 404         | `NOT_FOUND`          | Token not found, repo not found         |
+| `AppError.conflict()`    | 409         | `ALREADY_EXISTS`     | Duplicate subscription                  |
+| `AppError.rateLimited()` | 429         | `RESOURCE_EXHAUSTED` | GitHub rate limit exceeded              |
+| `AppError.external()`    | 502         | `UNAVAILABLE`        | GitHub API / SMTP failures              |
+| `AppError.internal()`    | 500         | `INTERNAL`           | Unexpected server errors                |
+
+### Error Handler
+
+The Express error handler (`src/middleware/error-handler.ts`) intercepts all thrown errors and:
+
+1. Converts `ZodError` → 400 with field-level error details.
+2. Converts `AppError` → appropriate HTTP status with `{ message, code }` body.
+3. Logs 5xx errors at `error` level and 4xx errors at `warn` level.
+4. Suppresses noise logging for expected 404 "Route not found" cases.
+5. Returns a generic `500 Internal Server Error` for any unrecognized error type, without leaking stack traces.
+
+---
+
+## 10. Security Considerations
+
+### HTTP Security Headers
+
+`helmet` is applied globally to all Express responses.
+
+### Rate Limiting
+
+Rate Limiting enforces a sliding window limit. The limiter uses standard `RateLimit-*` headers and returns a `429` response with a human-readable message when the limit is exceeded.
+
+### Origin Validation
+
+An origin middleware layer validates the `Origin` header of incoming requests against a configurable allowlist. Requests with disallowed origins are rejected before reaching business logic.
+
+### Token Security
+
+- Confirm and unsubscribe tokens are generated with `crypto.randomBytes`.
+
+### Secrets Management
+
+- All sensitive configuration (database credentials, SMTP credentials, GitHub token) is injected via environment variables validated by Zod at startup.
+- No secrets are committed to the repository. `.env` files are excluded from version control.
+
+### SQL Injection Prevention
+
+All database queries use parameterised statements via the `pg` driver's `$1, $2, ...` placeholder syntax. No string interpolation is used in SQL.
+
+### GitHub Token
+
+The `GITHUB_TOKEN` is optional. When present, it is transmitted as a `Bearer` token in the `Authorization` header over HTTPS to the GitHub API.
+
+### gRPC Transport Security
+
+The gRPC server binds with `ServerCredentials.createInsecure()`. TLS is terminated at the Nginx before traffic reaches the application.
+
+---
+
+## 11. Scalability Considerations
+
+### Current Infrastructure Constraints
+
+The application is currently deployed on a single VPS instance with limited resources:
+
+| Resource     | Available              |
+| ------------ | ---------------------- |
+| CPU          | 1 vCPU                 |
+| RAM          | 2 GB                   |
+| Storage      | 20 GB NVMe             |
+| Architecture | Single-node deployment |
+
+The infrastructure is intentionally minimal because the project is educational, maintained by a single developer, and does not target high production traffic.
+
+### Current System Constraints
+
+| Resource   | Limiting Factor                                            |
+| ---------- | ---------------------------------------------------------- |
+| GitHub API | 5,000 req/hour (authenticated), Redis cache mitigates this |
+| Scanner    | Single-instance in-process lock, cannot run in parallel    |
+| PostgreSQL | Single instance, vertical scaling only in current setup    |
+| SMTP       | 2,500 emails/hour                                          |
+
+### Current Scalability Characteristics
+
+The current architecture is sufficient for low-to-moderate workloads and educational usage scenarios. The application is relatively lightweight because:
+
+- Most operations are I/O-bound rather than CPU-intensive.
+- Business logic is simple and request throughput is low.
+- Redis reduces repeated GitHub API calls.
+- The scanner runs periodically rather than continuously.
+- PostgreSQL workload is minimal due to the simple model.
+
+However, the current single-node deployment introduces several scalability limitations:
+
+- No horizontal scaling.
+- No automatic failover.
+- Shared CPU and memory between all containers.
+- Limited database throughput.
+- Single point of failure.
+
+### Horizontal Scaling Path
+
+The application itself is largely stateless between requests – persistent state is stored in PostgreSQL and Redis.
+
+To support multiple application instances in the future, the following changes would be required:
+
+1. Replace the in-process scanner mutex with distributed coordination (for example Redis distributed locks or PostgreSQL advisory locks).
+2. Move PostgreSQL and Redis to dedicated managed or external infrastructure.
+3. Introduce load balancing between multiple application containers.
+4. Add centralized logging and monitoring for multi-instance observability.
+
+The scanner lock is currently the primary architectural blocker preventing safe horizontal scaling.
+
+No application code changes are required for items 2 and 3. Item 1 is the primary blocker.
+
+### Connection Pooling
+
+PostgreSQL connection pooling is configurable through environment variables:
+
+- `DB_MAX_CONNECTIONS`
+- `DB_IDLE_TIMEOUT_MS`
+- `DB_CONNECTION_TIMEOUT_MS`
+
+The current configuration is intentionally conservative to avoid exhausting limited VPS resources.
+
+### Resource Allocation
+
+Docker Compose resource limits are configured conservatively to fit within the available VPS capacity.
+
+| Service     | CPU Limit     | Memory Limit |
+| ----------- | ------------- | ------------ |
+| Application | 0.5-1.0 vCPU  | 512-768 MB   |
+| PostgreSQL  | 0.25-0.5 vCPU | 256-512 MB   |
+| Redis       | 0.1-0.25 vCPU | 64-128 MB    |
+
+The remaining resources are reserved for the operating system, Docker runtime, reverse proxy, and temporary workload spikes.
+
+---
+
+## 12. Reliability Considerations
+
+### Health Checks
+
+- **Docker Compose healthcheck** polls `GET /api/health` every 30 seconds. Container restarts are triggered after 3 consecutive failures.
+- **Application health endpoint** internally checks PostgreSQL connectivity (query roundtrip) and Redis connectivity (ping).
+- Dependent services (`db`, `redis`) have their own `healthcheck` directives, and the `app` service declares `depends_on: condition: service_healthy` to prevent startup race conditions.
+
+### Graceful Shutdown
+
+`server.ts` registers handlers for `SIGTERM` and `SIGINT` that:
+
+1. Stop accepting new HTTP connections.
+2. Stop the background scanner.
+3. Close the Redis connection.
+4. Drain the PostgreSQL connection pool.
+5. Exit cleanly.
+
+This ensures in-flight requests complete and no database connections are abandoned when a container is stopped.
+
+---
+
+## 13. Observability and Monitoring
+
+### Structured Logging
+
+All application logs are emitted as structured JSON to stdout. Log entries include:
+
+- `level`: `error` | `warn` | `info` | `debug`
+- `message`: Human-readable description
+- `requestId`: Injected per-request UUID for correlation
+- `timestamp`: ISO 8601
+- Contextual fields (method, path, status code, duration, error details)
+
+Log verbosity is controlled by `LOG_LEVEL` (default: `info`).
+
+### Metrics
+
+The `/metrics` endpoint serves Prometheus text format. Metrics are collected by the `MetricsService`.
+
+**Custom metrics:**
+
+| Metric                                 | Type    | Labels           |
+| -------------------------------------- | ------- | ---------------- |
+| `github_notifier_active_subscriptions` | Gauge   | –                |
+| `github_notifier_api_calls_total`      | Counter | `status`, `type` |
+| `github_notifier_emails_sent_total`    | Counter | `status`         |
+| `github_notifier_scanner_runs_total`   | Counter | `status`         |
+
+**Default Node.js metrics**:
+
+- Event loop lag
+- Heap memory (used, total, external)
+- GC pause duration histogram
+- Active handles and requests
+- CPU usage
+
+---
+
+## 14. CI/CD Pipeline
+
+The project uses **GitHub Actions** for continuous integration.
+
+### Pipeline Stages
+
+```mermaid
+flowchart TB
+    A[Push / Pull Request] --> B[Quality job]
+
+    B --> C[Install dependencies]
+    C --> D[Generate gRPC types]
+    D --> E[Check formatting]
+    E --> F[Run linter]
+    F --> G[Type check]
+    G --> H[Build project]
+
+    H --> I[Test job]
+
+    I --> J[Start PostgreSQL, Redis, Mailhog]
+    J --> K[Install dependencies]
+    K --> L[Generate gRPC types]
+    L --> M[Run tests]
+    M --> N[Done]
+```
+
+## 15. Testing Strategy
+
+**Vitest** is used for all automated test.
+
+| Test Type         | Location                     | Description                                                 |
+| ----------------- | ---------------------------- | ----------------------------------------------------------- |
+| Unit tests        | `src/__tests__/*.test.ts`    | Isolated service and utility tests with mocked dependencies |
+| Integration tests | `src/__tests__/integration/` | Tests against a real PostgreSQL and Redis instance          |
+
+**Coverage** is collected via Vitest's built-in V8 provider and reported as HTML in the `coverage/` directory.
+
+---
+
+## 16. Deployment Architecture
+
+### Strategy
+
+```mermaid
+graph TD
+    Internet["Internet"] --> CF["Cloudflare"]
+    CF --> Nginx["Nginx\n(Reverse proxy, TLS termination)"]
+    Nginx -->|HTTP :3000| App["Node.js App Container"]
+    Nginx -->|gRPC :50051| App
+    App --> PG["PostgreSQL Container\n(internal network only)"]
+    App --> Redis["Redis Container\n(internal network only)"]
+    App -->|outbound HTTPS| GitHub["GitHub API"]
+    App -->|outbound SMTP| SMTP["SMTP Provider"]
+    Prometheus["Prometheus"] -->|scrape :metrics| App
+```
+
+The application is currently deployed manually to a single VPS server using Docker Compose. This approach was intentionally selected because the project is educational, maintained by a single developer, and does not require complex orchestration infrastructure.
+
+The deployment flow currently consists of:
+
+1. Pulling the latest source code from the repository
+2. Building updated Docker images
+3. Restarting containers through Docker Compose
+4. Running database migrations if required
+
+A fully automated CI/CD deployment pipeline is planned as a future improvement.
+
+### Containerization
+
+The application uses a multi-stage Docker build to reduce production image size and separate build-time dependencies from the runtime environment.
+
+Key containerization decisions:
+
+- Multi-stage build for smaller production images
+- Production-only dependency installation
+- Non-root container execution
+- Explicit health checks
+- Isolated internal Docker network for infrastructure services
+- Separate runtime and build environments
+
+### Network Isolation
+
+All services communicate through the internal app-network Docker bridge network.
+
+PostgreSQL and Redis are intentionally not exposed to public host ports in production. Only the application container is accessible externally through Nginx, reducing the external attack surface.
+
+### Infrastructure Limitations
+
+The current deployment architecture uses a single VPS instance, which simplifies infrastructure management but introduces several limitations:
+
+- No horizontal scaling
+- No automatic failover
+- No high-availability database setup
+- Manual deployment process
+- Limited disaster recovery capabilities
+
+These trade-offs are acceptable for the current educational scope and expected system load.
+
+---
+
+## 17. Trade-offs and Limitations
+
+<table>
+    <thead>
+        <tr>
+            <th>Trade-off</th>
+            <th>Current Decision</th>
+            <th>Current Consequence</th>
+            <th>Possible Future Improvement</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Monolith vs. microservices</td>
+            <td>Monolith</td>
+            <td>Simpler operations, harder to scale scanner independently</td>
+            <td>Extract scanner or notification delivery into separate services if scaling requirements increase</td>
+        </tr>
+        <tr>
+            <td>Poll-based vs. webhook-based release detection</td>
+            <td>Poll (<code>setInterval</code>)</td>
+            <td>Configurable delay before notification, additional GitHub API usage</td>
+            <td>Add GitHub webhook support for near real-time release detection</td>
+        </tr>
+        <tr>
+            <td>In-process scanner lock</td>
+            <td>Boolean mutex</td>
+            <td>Cannot safely run multiple app instances without coordination</td>
+            <td>Replace with distributed locking or job queue coordination</td>
+        </tr>
+        <tr>
+            <td>No authentication system</td>
+            <td>Token-based flows only</td>
+            <td>Simpler UX, no account recovery or management interface</td>
+            <td>Add optional user accounts and subscription dashboard</td>
+        </tr>
+        <tr>
+            <td>No ORM</td>
+            <td>Raw SQL</td>
+            <td>Full query control, more boilerplate for complex queries</td>
+            <td>Additional refactoring and abstraction layers following SOLID and GRASP principles</td>
+        </tr>
+        <tr>
+            <td>gRPC without mTLS at application layer</td>
+            <td>Insecure credentials</td>
+            <td>TLS must be enforced at infrastructure level</td>
+            <td>Add mTLS or stronger service-to-service security mechanisms</td>
+        </tr>
+        <tr>
+            <td>Redis optional</td>
+            <td>Graceful fallback to live API</td>
+            <td>Faster consumption of GitHub API rate limits without cache</td>
+            <td>Improve caching strategies and cache invalidation mechanisms</td>
+        </tr>
+        <tr>
+            <td>Single <code>subscriptions</code> table</td>
+            <td>Flat schema</td>
+            <td>Simple structure, denormalised repository metadata</td>
+            <td>Normalize repository-related data if the domain model grows</td>
+        </tr>
+        <tr>
+            <td>Email-only notifications</td>
+            <td>SMTP email delivery only</td>
+            <td>Simplest delivery mechanism, dependency on SMTP provider</td>
+            <td>Add webhooks, push notifications, or chat integrations</td>
+        </tr>
+        <tr>
+            <td>Manual deployment</td>
+            <td>Manual deployment flow</td>
+            <td>More operational steps and higher deployment risk</td>
+            <td>Add automated CI/CD deployment pipeline</td>
+        </tr>
+        <tr>
+            <td>Limited observability</td>
+            <td>Basic logs and metrics</td>
+            <td>Reduced visibility into failures and system health</td>
+            <td>Add centralized monitoring, metrics aggregation, and alerting</td>
+        </tr>
+        <tr>
+            <td>No automated backup strategy</td>
+            <td>Database persistence only</td>
+            <td>Higher recovery risk during infrastructure failures</td>
+            <td>Add automated backups and recovery procedures</td>
+        </tr>
+        <tr>
+            <td>Limited infrastructure security automation</td>
+            <td>Basic dependency management</td>
+            <td>Potential delayed detection of vulnerabilities</td>
+            <td>Add dependency auditing and container vulnerability scanning</td>
+        </tr>
+        <tr>
+            <td>Email delivery reliability</td>
+            <td>Direct SMTP sending</td>
+            <td>Failed deliveries may require manual investigation</td>
+            <td>Add retry queues and dead-letter handling</td>
+        </tr>
+    </tbody>
+</table>
+
+---
+
+## 18. Future Improvements
+
+- Further refactor modules according to SOLID and GRASP principles to improve maintainability, reduce coupling, and simplify future feature expansion.
+- Add stronger service-to-service security mechanisms such as mTLS for gRPC communication.
+- Add an automated deployment pipeline (CD) to reduce manual deployment steps and improve release reliability.
+- Implement automated database backup and recovery procedures to improve resilience against data loss and infrastructure failures.
+- Introduce centralized monitoring, metrics collection, and alerting to track application health, uptime, resource usage, and failures.
+- Support GitHub webhooks in addition to polling to reduce notification latency and API usage.
+- Add optional user accounts and a management dashboard for subscription administration.
+- Add stronger service-to-service security mechanisms.
+- Add container vulnerability scanning and dependency auditing to improve infrastructure and supply-chain security.
+- Implement retry queues and dead-letter handling for email delivery failures.
