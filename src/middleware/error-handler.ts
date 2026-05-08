@@ -1,8 +1,9 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
+
+import type { ErrorResponse } from "../dto/subscription.dto.js";
 import { AppError } from "../utils/errors.js";
 import type { Logger } from "../utils/logger.js";
-import type { ErrorResponse } from "../dto/subscription.dto.js";
 
 export function createErrorHandler(logger: Logger) {
     return (error: unknown, req: Request, res: Response, _next: NextFunction): void => {

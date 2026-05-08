@@ -11,6 +11,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.test.ci
 
 # Logs
 logs
@@ -54,3 +55,6 @@ Thumbs.db
 # Backup files
 *.backup
 *.bak
+
+# Generated gRPC types
+src/grpc/generated/

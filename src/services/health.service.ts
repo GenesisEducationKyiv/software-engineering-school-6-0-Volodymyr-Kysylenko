@@ -15,10 +15,10 @@ export interface HealthCheckResult {
 }
 
 export class HealthService {
-    private checks: Map<string, () => Promise<HealthCheck>> = new Map();
+    private readonly checks = new Map<string, () => Promise<HealthCheck>>();
     private readonly version: string;
 
-    constructor(version: string = process.env.npm_package_version || "1.0.0") {
+    constructor(version: string = process.env.npm_package_version ?? "1.0.0") {
         this.version = version;
     }
 
@@ -61,13 +61,21 @@ export class HealthService {
     }
 
     private calculateOverallStatus(checks: HealthCheck[]): "healthy" | "unhealthy" | "degraded" {
-        if (checks.length === 0) return "healthy";
+        if (checks.length === 0) {
+            return "healthy";
+        }
 
         const hasUnhealthy = checks.some((check) => check.status === "unhealthy");
         const hasDegraded = checks.some((check) => check.status === "degraded");
 
-        if (hasUnhealthy) return "unhealthy";
-        if (hasDegraded) return "degraded";
+        if (hasUnhealthy) {
+            return "unhealthy";
+        }
+
+        if (hasDegraded) {
+            return "degraded";
+        }
+
         return "healthy";
     }
 }

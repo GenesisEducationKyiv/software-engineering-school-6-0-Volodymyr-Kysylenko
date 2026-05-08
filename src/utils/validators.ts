@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import { AppError } from "./errors.js";
 
 const emailSchema = z.string().email();

@@ -1,7 +1,20 @@
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+
+import { env } from "../config/env.js";
+import type { ProtoGrpcType } from "./generated/subscription.js";
+import type { ConfirmRequest } from "./generated/subscription/ConfirmRequest.js";
+import type { ConfirmResponse__Output } from "./generated/subscription/ConfirmResponse.js";
+import type { GetSubscriptionsRequest } from "./generated/subscription/GetSubscriptionsRequest.js";
+import type { GetSubscriptionsResponse__Output } from "./generated/subscription/GetSubscriptionsResponse.js";
+import type { SubscribeRequest } from "./generated/subscription/SubscribeRequest.js";
+import type { SubscribeResponse__Output } from "./generated/subscription/SubscribeResponse.js";
+import type { SubscriptionServiceClient } from "./generated/subscription/SubscriptionService.js";
+import type { UnsubscribeRequest } from "./generated/subscription/UnsubscribeRequest.js";
+import type { UnsubscribeResponse__Output } from "./generated/subscription/UnsubscribeResponse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,64 +29,95 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     oneofs: true,
 });
 
-const subscriptionProto = grpc.loadPackageDefinition(packageDefinition).subscription as any;
+const proto = grpc.loadPackageDefinition(packageDefinition) as unknown as ProtoGrpcType;
+const subscriptionProto = proto.subscription;
 
-export function createGrpcClient(serverAddress: string = "localhost:50051") {
+function resolveGrpcResponse<T>(
+    response: T | undefined,
+    resolve: (value: T) => void,
+    reject: (reason?: unknown) => void,
+): void {
+    if (!response) {
+        reject(new Error("gRPC response is empty"));
+        return;
+    }
+
+    resolve(response);
+}
+
+export function createGrpcClient(serverAddress = `localhost:${env.GRPC_PORT}`): SubscriptionServiceClient {
     return new subscriptionProto.SubscriptionService(serverAddress, grpc.credentials.createInsecure());
 }
 
-export async function subscribeViaGrpc(email: string, repo: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
+const grpcClient = createGrpcClient();
 
-        client.Subscribe({ email, repo }, (error: any, response: any) => {
+export function getGrpcClient(): SubscriptionServiceClient {
+    return grpcClient;
+}
+
+export async function subscribeViaGrpc(email: string, repo: string): Promise<SubscribeResponse__Output> {
+    return new Promise((resolve, reject) => {
+        const request: SubscribeRequest = {
+            email,
+            repo,
+        };
+
+        grpcClient.Subscribe(request, (error, response) => {
             if (error) {
                 reject(error);
-            } else {
-                resolve(response);
+                return;
             }
+            resolveGrpcResponse(response, resolve, reject);
         });
     });
 }
 
-export async function confirmViaGrpc(token: string): Promise<any> {
+export async function confirmViaGrpc(token: string): Promise<ConfirmResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
+        const request: ConfirmRequest = {
+            token,
+        };
 
-        client.Confirm({ token }, (error: any, response: any) => {
+        grpcClient.Confirm(request, (error, response) => {
             if (error) {
                 reject(error);
-            } else {
-                resolve(response);
+                return;
             }
+
+            resolveGrpcResponse(response, resolve, reject);
         });
     });
 }
 
-export async function unsubscribeViaGrpc(token: string): Promise<any> {
+export async function unsubscribeViaGrpc(token: string): Promise<UnsubscribeResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
+        const request: UnsubscribeRequest = {
+            token,
+        };
 
-        client.Unsubscribe({ token }, (error: any, response: any) => {
+        grpcClient.Unsubscribe(request, (error, response) => {
             if (error) {
                 reject(error);
-            } else {
-                resolve(response);
+                return;
             }
+
+            resolveGrpcResponse(response, resolve, reject);
         });
     });
 }
 
-export async function getSubscriptionsViaGrpc(email: string): Promise<any> {
+export async function getSubscriptionsViaGrpc(email: string): Promise<GetSubscriptionsResponse__Output> {
     return new Promise((resolve, reject) => {
-        const client = createGrpcClient();
+        const request: GetSubscriptionsRequest = {
+            email,
+        };
 
-        client.GetSubscriptions({ email }, (error: any, response: any) => {
+        grpcClient.GetSubscriptions(request, (error, response) => {
             if (error) {
                 reject(error);
-            } else {
-                resolve(response);
+                return;
             }
+            resolveGrpcResponse(response, resolve, reject);
         });
     });
 }

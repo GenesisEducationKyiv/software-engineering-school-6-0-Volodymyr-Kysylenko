@@ -1,13 +1,14 @@
 import promClient from "prom-client";
+
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
 import { logger } from "../utils/logger.js";
 
 class MetricsService {
-    private registry: promClient.Registry;
-    private activeSubscriptions: promClient.Gauge;
-    private githubApiCalls: promClient.Counter<string>;
-    private emailsSent: promClient.Counter<string>;
-    private scannerRuns: promClient.Counter<string>;
+    private readonly registry: promClient.Registry;
+    private readonly activeSubscriptions: promClient.Gauge;
+    private readonly githubApiCalls: promClient.Counter<string>;
+    private readonly emailsSent: promClient.Counter<string>;
+    private readonly scannerRuns: promClient.Counter<string>;
 
     constructor() {
         this.registry = new promClient.Registry();

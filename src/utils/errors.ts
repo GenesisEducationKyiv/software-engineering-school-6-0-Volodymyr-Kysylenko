@@ -23,7 +23,7 @@ export class AppError extends Error {
         return new AppError(400, message, ErrorCodes.VALIDATION_ERROR, details);
     }
 
-    static notFound(message: string = "Resource not found"): AppError {
+    static notFound(message = "Resource not found"): AppError {
         return new AppError(404, message, ErrorCodes.RESOURCE_NOT_FOUND);
     }
 
@@ -31,7 +31,7 @@ export class AppError extends Error {
         return new AppError(409, message, ErrorCodes.RESOURCE_CONFLICT, details);
     }
 
-    static rateLimited(message: string = "Too many requests"): AppError {
+    static rateLimited(message = "Too many requests"): AppError {
         return new AppError(429, message, ErrorCodes.RATE_LIMITED);
     }
 
@@ -39,7 +39,7 @@ export class AppError extends Error {
         return new AppError(503, message, ErrorCodes.EXTERNAL_SERVICE_ERROR, details);
     }
 
-    static internal(message: string = "Internal server error"): AppError {
+    static internal(message = "Internal server error"): AppError {
         return new AppError(500, message, ErrorCodes.INTERNAL_ERROR);
     }
 }

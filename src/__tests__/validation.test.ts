@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { CreateSubscriptionDto, TokenParamsDto, ListSubscriptionsDto } from "../dto/subscription.dto.js";
+
+import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
 
 describe("DTO Validation", () => {
     describe("CreateSubscriptionDto", () => {

@@ -1,23 +1,23 @@
 import { env } from "../config/env.js";
 import { AppError } from "../utils/errors.js";
-import { metricsService } from "./metrics.service.js";
-import { cacheService, CacheService } from "./cache.service.js";
 import { logger } from "../utils/logger.js";
+import { CacheService, cacheService } from "./cache.service.js";
+import { metricsService } from "./metrics.service.js";
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
 
-export type GithubRepoCheck = {
+export interface GithubRepoCheck {
     owner: string;
     repo: string;
     fullName: string;
-};
+}
 
-export type LatestRelease = {
+export interface LatestRelease {
     tagName: string;
     htmlUrl: string;
     name: string | null;
     publishedAt: string | null;
-};
+}
 
 const BASE_HEADERS: HeadersInit = {
     Accept: "application/vnd.github+json",
@@ -56,7 +56,7 @@ async function fetchWithTimeout(url: string, options: RequestInit): Promise<Resp
     }
 }
 
-async function handleGithubErrors(response: Response): Promise<void> {
+function handleGithubErrors(response: Response): void {
     if (response.status === 429 || response.status === 403) {
         const remaining = response.headers.get("x-ratelimit-remaining");
 
@@ -82,7 +82,7 @@ export const githubService = {
 
         metricsService.recordGithubApiCall(response.ok ? "success" : "error", "other");
 
-        await handleGithubErrors(response);
+        handleGithubErrors(response);
 
         if (response.status === 404) {
             throw AppError.notFound("Repository not found on GitHub");
@@ -101,17 +101,20 @@ export const githubService = {
 
         const cached = await cacheService.get<LatestRelease | null>(cacheKey);
         if (cached !== null) {
-            logger.debug("Latest release found in cache", { repo: input.fullName, tagName: cached?.tagName });
+            logger.debug("Latest release found in cache", { repo: input.fullName, tagName: cached.tagName });
             return cached;
         }
 
-        const response = await fetchWithTimeout(`${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}/releases/latest`, {
-            headers: buildHeaders(),
-        });
+        const response = await fetchWithTimeout(
+            `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}/releases/latest`,
+            {
+                headers: buildHeaders(),
+            },
+        );
 
         metricsService.recordGithubApiCall(response.ok ? "success" : "error", "releases");
 
-        await handleGithubErrors(response);
+        handleGithubErrors(response);
 
         if (response.status === 404) {
             await cacheService.set(cacheKey, null, 120);

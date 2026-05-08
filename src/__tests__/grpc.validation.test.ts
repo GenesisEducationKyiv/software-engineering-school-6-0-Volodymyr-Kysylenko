@@ -1,11 +1,8 @@
-import { describe, it, expect } from "vitest";
 import * as grpc from "@grpc/grpc-js";
-import { validateGrpcRequest, mapHttpToGrpcStatus } from "../grpc/validation.utils.js";
-import { 
-    CreateSubscriptionDto, 
-    TokenParamsDto, 
-    ListSubscriptionsDto 
-} from "../dto/subscription.dto.js";
+import { describe, expect, it } from "vitest";
+
+import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
+import { mapHttpToGrpcStatus, validateGrpcRequest } from "../grpc/validation.utils.js";
 
 describe("gRPC Validation Utils", () => {
     describe("validateGrpcRequest", () => {
@@ -13,96 +10,134 @@ describe("gRPC Validation Utils", () => {
             it("validates correct subscription data", () => {
                 const validData = {
                     email: "test@example.com",
-                    repo: "user/repo-name"
+                    repo: "user/repo-name",
                 };
 
                 const result = validateGrpcRequest(validData, CreateSubscriptionDto);
-                
+
                 expect(result.success).toBe(true);
+
+                if (!result.success) {
+                    throw new Error("Expected success");
+                }
+
                 expect(result.data).toEqual(validData);
-                expect(result.error).toBeUndefined();
             });
 
             it("rejects invalid email format", () => {
                 const invalidData = {
                     email: "invalid-email",
-                    repo: "user/repo"
+                    repo: "user/repo",
                 };
 
                 const result = validateGrpcRequest(invalidData, CreateSubscriptionDto);
-                
+
                 expect(result.success).toBe(false);
-                expect(result.data).toBeUndefined();
+
+                if (result.success) {
+                    throw new Error("Expected failure");
+                }
+
                 expect(result.error).toEqual({
                     code: grpc.status.INVALID_ARGUMENT,
-                    details: expect.stringContaining("email")
+                    details: expect.stringContaining("email"),
                 });
             });
 
             it("rejects invalid repo format", () => {
                 const invalidData = {
                     email: "test@example.com",
-                    repo: "invalid/repo/format"
+                    repo: "invalid/repo/format",
                 };
 
                 const result = validateGrpcRequest(invalidData, CreateSubscriptionDto);
-                
+
                 expect(result.success).toBe(false);
-                expect(result.error?.code).toBe(grpc.status.INVALID_ARGUMENT);
-                expect(result.error?.details).toContain("Invalid repo format");
+
+                if (result.success) {
+                    throw new Error("Expected failure");
+                }
+
+                expect(result.error.code).toBe(grpc.status.INVALID_ARGUMENT);
+                expect(result.error.details).toContain("Invalid repo format");
             });
 
             it("provides detailed validation errors", () => {
                 const invalidData = {
                     email: "invalid-email",
-                    repo: "invalid/repo/format"
+                    repo: "invalid/repo/format",
                 };
 
                 const result = validateGrpcRequest(invalidData, CreateSubscriptionDto);
-                
+
                 expect(result.success).toBe(false);
-                expect(result.error?.details).toContain("email");
-                expect(result.error?.details).toContain("repo");
+
+                if (result.success) {
+                    throw new Error("Expected failure");
+                }
+
+                expect(result.error.details).toContain("email");
+                expect(result.error.details).toContain("repo");
             });
         });
 
         describe("TokenParamsDto", () => {
             it("validates valid token", () => {
                 const validData = { token: "abc123" };
-                
+
                 const result = validateGrpcRequest(validData, TokenParamsDto);
-                
+
                 expect(result.success).toBe(true);
+
+                if (!result.success) {
+                    throw new Error("Expected success");
+                }
+
                 expect(result.data).toEqual(validData);
             });
 
             it("rejects empty token", () => {
                 const invalidData = { token: "" };
-                
+
                 const result = validateGrpcRequest(invalidData, TokenParamsDto);
-                
+
                 expect(result.success).toBe(false);
-                expect(result.error?.code).toBe(grpc.status.INVALID_ARGUMENT);
+
+                if (result.success) {
+                    throw new Error("Expected failure");
+                }
+
+                expect(result.error.code).toBe(grpc.status.INVALID_ARGUMENT);
             });
         });
 
         describe("ListSubscriptionsDto", () => {
             it("validates valid email query", () => {
                 const validData = { email: "user@example.com" };
-                
+
                 const result = validateGrpcRequest(validData, ListSubscriptionsDto);
-                
+
                 expect(result.success).toBe(true);
+
+                if (!result.success) {
+                    throw new Error("Expected success");
+                }
+
                 expect(result.data).toEqual(validData);
             });
 
             it("rejects invalid email", () => {
                 const invalidData = { email: "invalid-email" };
-                
+
                 const result = validateGrpcRequest(invalidData, ListSubscriptionsDto);
-                
+
                 expect(result.success).toBe(false);
-                expect(result.error?.code).toBe(grpc.status.INVALID_ARGUMENT);
+
+                if (result.success) {
+                    throw new Error("Expected failure");
+                }
+
+                expect(result.error.code).toBe(grpc.status.INVALID_ARGUMENT);
             });
         });
     });

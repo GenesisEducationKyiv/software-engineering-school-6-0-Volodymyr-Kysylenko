@@ -1,4 +1,5 @@
-import { createClient, RedisClientType } from "redis";
+import { createClient, type RedisClientType } from "redis";
+
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 

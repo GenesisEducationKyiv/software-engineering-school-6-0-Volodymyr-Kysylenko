@@ -1,35 +1,38 @@
+import type { StatusObject } from "@grpc/grpc-js";
 import * as grpc from "@grpc/grpc-js";
-import { ZodError, ZodSchema } from "zod";
+import { ZodError, type ZodSchema } from "zod";
 
-interface GrpcValidationResult<T> {
-    success: boolean;
-    data?: T;
-    error?: {
-        code: number;
-        details: string;
-    };
-}
+type GrpcValidationError = Partial<StatusObject> & {
+    code: grpc.status;
+    details: string;
+};
+
+type GrpcValidationResult<T> =
+    | {
+          success: true;
+          data: T;
+      }
+    | {
+          success: false;
+          error: GrpcValidationError;
+      };
 
 /**
  * Validates gRPC request data using Zod schema
  * Returns validation result with gRPC-compatible error format
  */
-export function validateGrpcRequest<T>(
-    requestData: unknown,
-    schema: ZodSchema<T>
-): GrpcValidationResult<T> {
+export function validateGrpcRequest<T>(requestData: unknown, schema: ZodSchema<T>): GrpcValidationResult<T> {
     try {
         const validatedData = schema.parse(requestData);
+
         return {
             success: true,
             data: validatedData,
         };
     } catch (error) {
         if (error instanceof ZodError) {
-            const errorMessages = error.errors.map(err => 
-                `${err.path.join('.')}: ${err.message}`
-            ).join('; ');
-            
+            const errorMessages = error.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join("; ");
+
             return {
                 success: false,
                 error: {
@@ -38,7 +41,7 @@ export function validateGrpcRequest<T>(
                 },
             };
         }
-        
+
         return {
             success: false,
             error: {
@@ -52,7 +55,7 @@ export function validateGrpcRequest<T>(
 /**
  * Maps HTTP status codes to gRPC status codes
  */
-export function mapHttpToGrpcStatus(httpCode: number): number {
+export function mapHttpToGrpcStatus(httpCode: number): grpc.status {
     switch (httpCode) {
         case 400:
             return grpc.status.INVALID_ARGUMENT;

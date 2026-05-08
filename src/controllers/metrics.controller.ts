@@ -1,18 +1,17 @@
-import type { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 
-import { AppError } from "../utils/errors.js";
-import { metricsService } from "../services/metrics.service.js";
-import { HealthService } from "../services/health.service.js";
 import { pool } from "../db/pool.js";
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
+import { HealthService } from "../services/health.service.js";
+import { metricsService } from "../services/metrics.service.js";
+import { AppError } from "../utils/errors.js";
 
 type ControllerMethod = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
 class MetricsController {
-    private healthService: HealthService;
+    private readonly healthService = new HealthService();
 
     constructor() {
-        this.healthService = new HealthService();
         this.setupHealthChecks();
     }
 
@@ -64,7 +63,7 @@ class MetricsController {
                 status: "unhealthy",
                 timestamp: new Date().toISOString(),
                 uptime: process.uptime(),
-                version: process.env.npm_package_version || "1.0.0",
+                version: process.env.npm_package_version ?? "1.0.0",
                 checks: [],
                 message: "Health check failed",
             });

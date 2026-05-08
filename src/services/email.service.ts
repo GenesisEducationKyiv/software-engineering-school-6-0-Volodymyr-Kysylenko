@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+
 import { env } from "../config/env.js";
 import { metricsService } from "./metrics.service.js";
 
@@ -35,10 +36,19 @@ class EmailService {
             }
         }
 
-        throw lastError;
+        if (lastError) {
+            throw lastError;
+        }
+
+        throw new Error("Failed to send email");
     }
 
-    async sendConfirmationEmail(input: { to: string; repo: string; confirmToken: string; unsubscribeToken: string }): Promise<void> {
+    async sendConfirmationEmail(input: {
+        to: string;
+        repo: string;
+        confirmToken: string;
+        unsubscribeToken: string;
+    }): Promise<void> {
         const confirmApiUrl = `${env.APP_BASE_URL}/api/confirm/${input.confirmToken}`;
         const unsubscribeApiUrl = `${env.APP_BASE_URL}/api/unsubscribe/${input.unsubscribeToken}`;
 

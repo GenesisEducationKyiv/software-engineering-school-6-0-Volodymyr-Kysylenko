@@ -1,7 +1,11 @@
-import * as grpc from "@grpc/grpc-js";
-import * as protoLoader from "@grpc/proto-loader";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import * as grpc from "@grpc/grpc-js";
+import * as protoLoader from "@grpc/proto-loader";
+
+import { logger } from "../utils/logger.js";
+import type { ProtoGrpcType } from "./generated/subscription.js";
 import { subscriptionHandlers } from "./subscription.handlers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,17 +22,17 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
     oneofs: true,
 });
 
-const subscriptionProto = grpc.loadPackageDefinition(packageDefinition).subscription as any;
+const proto = grpc.loadPackageDefinition(packageDefinition) as unknown as ProtoGrpcType;
 
 export function createGrpcServer(): grpc.Server {
     const server = new grpc.Server();
 
-    server.addService(subscriptionProto.SubscriptionService.service, subscriptionHandlers);
+    server.addService(proto.subscription.SubscriptionService.service, subscriptionHandlers);
 
     return server;
 }
 
-export function startGrpcServer(port: number): Promise<void> {
+export async function startGrpcServer(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
         const server = createGrpcServer();
 
@@ -38,7 +42,7 @@ export function startGrpcServer(port: number): Promise<void> {
                 return;
             }
 
-            console.log(`gRPC server started on port ${boundPort}`);
+            logger.info(`gRPC server started on port ${boundPort}`);
             resolve();
         });
     });

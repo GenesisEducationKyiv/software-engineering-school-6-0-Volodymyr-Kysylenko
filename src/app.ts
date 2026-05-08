@@ -5,30 +5,31 @@ import { fileURLToPath } from "node:url";
 
 // express
 import express from "express";
-
+import { rateLimit } from "express-rate-limit";
 // security
 import helmet from "helmet";
-import { rateLimit } from "express-rate-limit";
-
+import type { JsonObject } from "swagger-ui-express";
+import swaggerUi from "swagger-ui-express";
 // documentation
 import YAML from "yaml";
-import swaggerUi from "swagger-ui-express";
 
 // config
 import { env } from "./config/env.js";
-
+import { createErrorHandler } from "./middleware/error-handler.js";
 // middleware
 import { validateOrigin } from "./middleware/origin.middleware.js";
-import { createErrorHandler } from "./middleware/error-handler.js";
-import { requestIdMiddleware, createRequestLoggerMiddleware } from "./middleware/request.middleware.js";
-
+import { createRequestLoggerMiddleware, requestIdMiddleware } from "./middleware/request.middleware.js";
+import { metricsRouter } from "./routes/metrics.routes.js";
+// routes
+import { subscriptionPagesRouter, subscriptionRouter } from "./routes/subscription.routes.js";
 // utils
 import { AppError } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 
-// routes
-import { subscriptionRouter, subscriptionPagesRouter } from "./routes/subscription.routes.js";
-import { metricsRouter } from "./routes/metrics.routes.js";
+type SwaggerDocument = JsonObject & {
+    host?: string;
+    schemes?: string[];
+};
 
 // for Swagger document
 const __filename = fileURLToPath(import.meta.url);
@@ -37,7 +38,7 @@ const swaggerPath = path.resolve(__dirname, "../swagger.yaml");
 
 // one-time load and parse of Swagger document at startup
 const swaggerFileContent = fs.readFileSync(swaggerPath, "utf8");
-const swaggerDocument = YAML.parse(swaggerFileContent);
+const swaggerDocument = YAML.parse(swaggerFileContent) as SwaggerDocument;
 
 // dynamically set host
 const baseUrl = new URL(env.APP_BASE_URL);

@@ -56,3 +56,7 @@ docker-scripts.ps1
 *.backup
 *.bak
 *.sql
+
+
+# Generated gRPC types
+src/grpc/generated/

@@ -1,12 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createGrpcServer } from "../grpc/server.js";
-import { createGrpcClient } from "../grpc/client.js";
 import * as grpc from "@grpc/grpc-js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { env } from "../config/env.js";
+import { createGrpcClient } from "../grpc/client.js";
+import { createGrpcServer } from "../grpc/server.js";
 
 describe("gRPC Subscription Service", () => {
     let server: grpc.Server;
-    let client: any;
-    const testPort = 50052;
+    let client: ReturnType<typeof createGrpcClient>;
+    const testPort = env.GRPC_PORT;
 
     beforeAll(async () => {
         server = createGrpcServer();
@@ -25,14 +27,11 @@ describe("gRPC Subscription Service", () => {
     });
 
     afterAll(async () => {
-        if (client) {
-            client.close();
-        }
-        if (server) {
-            await new Promise<void>((resolve) => {
-                server.tryShutdown(() => resolve());
-            });
-        }
+        client.close();
+
+        await new Promise<void>((resolve) => {
+            server.tryShutdown(() => resolve());
+        });
     });
 
     it("should reject invalid subscription request", async () => {

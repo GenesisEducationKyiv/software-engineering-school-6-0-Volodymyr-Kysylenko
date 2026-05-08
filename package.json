@@ -1,49 +1,74 @@
 {
     "name": "github-release-notifier",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "private": true,
     "type": "module",
     "scripts": {
         "dev": "dotenv -e .env.development -- tsx watch src/server.ts",
         "dev:prod": "dotenv -e .env.production -- tsx watch src/server.ts",
-        "build": "tsc -p tsconfig.json",
+        "build": "pnpm run proto:gen && tsc -p tsconfig.json",
         "start": "dotenv -e .env.production -- node dist/server.js",
         "start:dev": "dotenv -e .env.development -- node dist/server.js",
-        "lint": "eslint src --ext .ts",
-        "lint:fix": "eslint src --ext .ts --fix",
+        "lint": "eslint . ",
+        "lint:fix": "eslint . --fix",
         "test": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run",
+        "test:coverage": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run --coverage",
         "test:watch": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest",
+        "test:ci": "dotenv -e .env.test.ci -- cross-env NODE_ENV=test vitest run",
         "migrate": "dotenv -e .env.development -- tsx src/db/migrate.ts",
-        "migrate:prod": "dotenv -e .env.production -- tsx src/db/migrate.ts"
+        "migrate:prod": "dotenv -e .env.production -- tsx src/db/migrate.ts",
+        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto --importFileExtension=.js",
+        "format": "prettier . --write",
+        "format:check": "prettier . --check",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "*.{ts,js,json,md,yml,yaml}": [
+            "prettier --write"
+        ],
+        "*.ts": [
+            "eslint --fix"
+        ]
     },
     "dependencies": {
         "@grpc/grpc-js": "^1.12.2",
         "@grpc/proto-loader": "^0.8.0",
         "dotenv": "^16.4.5",
         "express": "^4.21.2",
-        "redis": "^4.7.0",
         "express-rate-limit": "^8.3.2",
         "helmet": "^8.1.0",
         "nodemailer": "^6.10.0",
         "pg": "^8.13.1",
         "prom-client": "^15.1.3",
-        "zod": "^3.24.1",
+        "redis": "^4.7.0",
         "swagger-ui-express": "^5.0.1",
-        "yaml": "^2.8.0"
+        "yaml": "^2.8.0",
+        "zod": "^3.24.1"
     },
     "devDependencies": {
-        "@eslint/js": "^9.15.0",
+        "@eslint/js": "^9.39.4",
         "@types/express": "^5.0.0",
-        "@types/node": "^22.10.2",
+        "@types/node": "^22.19.17",
         "@types/nodemailer": "^6.4.17",
         "@types/pg": "^8.11.10",
+        "@types/swagger-ui-express": "^4.1.8",
+        "@vitest/coverage-v8": "2.1.9",
         "cross-env": "^7.0.3",
         "dotenv-cli": "^7.4.2",
-        "eslint": "^9.15.0",
+        "eslint": "^9.39.4",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-import-resolver-typescript": "^4.4.4",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-simple-import-sort": "^13.0.0",
+        "eslint-plugin-unused-imports": "^4.4.1",
+        "husky": "^9.1.7",
+        "jiti": "^2.6.1",
+        "lint-staged": "^17.0.2",
+        "prettier": "^3.8.3",
         "tsx": "^4.19.2",
-        "typescript": "^5.7.2",
-        "typescript-eslint": "^8.15.0",
-        "vitest": "^2.1.8",
-        "@types/swagger-ui-express": "^4.1.8"
+        "typescript": "^5.9.3",
+        "typescript-eslint": "^8.59.1",
+        "vitest": "^2.1.8"
     }
 }
