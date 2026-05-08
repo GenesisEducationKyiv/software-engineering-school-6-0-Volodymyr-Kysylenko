@@ -3,6 +3,7 @@
     "version": "1.0.1",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@10.0.0",
     "scripts": {
         "dev": "dotenv -e .env.development -- tsx watch src/server.ts",
         "dev:prod": "dotenv -e .env.production -- tsx watch src/server.ts",
@@ -70,5 +71,12 @@
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.59.1",
         "vitest": "^2.1.8"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild",
+            "protobufjs",
+            "unrs-resolver"
+        ]
     }
 }
