@@ -1,4 +1,4 @@
-import type { SubscriptionRecord } from "../types/subscription.js";
+import type { SubscriptionRecord } from "../../types/subscription.js";
 
 export function shouldNotifyForTag(
     subscription: Pick<SubscriptionRecord, "last_seen_tag">,

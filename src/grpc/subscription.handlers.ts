@@ -1,10 +1,14 @@
 import * as grpc from "@grpc/grpc-js";
 
 import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
-import { subscriptionService } from "../services/subscription.service.js";
+import type { SubscriptionServicePort } from "../services/subscription/subscription.types.js";
 import { AppError } from "../utils/errors.js";
 import type { SubscriptionServiceHandlers } from "./generated/subscription/SubscriptionService.js";
 import { mapHttpToGrpcStatus, validateGrpcRequest } from "./validation.utils.js";
+
+export interface CreateSubscriptionHandlersDependencies {
+    subscriptionService: SubscriptionServicePort;
+}
 
 function createGrpcError(code: grpc.status, details: string): grpc.ServiceError {
     return {
@@ -25,6 +29,7 @@ function handleGrpcError(error: unknown): grpc.ServiceError {
 }
 
 async function handleSubscribe(
+    subscriptionService: SubscriptionServicePort,
     call: Parameters<SubscriptionServiceHandlers["Subscribe"]>[0],
     callback: Parameters<SubscriptionServiceHandlers["Subscribe"]>[1],
 ): Promise<void> {
@@ -49,6 +54,7 @@ async function handleSubscribe(
 }
 
 async function handleConfirm(
+    subscriptionService: SubscriptionServicePort,
     call: Parameters<SubscriptionServiceHandlers["Confirm"]>[0],
     callback: Parameters<SubscriptionServiceHandlers["Confirm"]>[1],
 ): Promise<void> {
@@ -73,6 +79,7 @@ async function handleConfirm(
 }
 
 async function handleUnsubscribe(
+    subscriptionService: SubscriptionServicePort,
     call: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[0],
     callback: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[1],
 ): Promise<void> {
@@ -97,6 +104,7 @@ async function handleUnsubscribe(
 }
 
 async function handleGetSubscriptions(
+    subscriptionService: SubscriptionServicePort,
     call: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[0],
     callback: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[1],
 ): Promise<void> {
@@ -125,28 +133,32 @@ async function handleGetSubscriptions(
     }
 }
 
-export const subscriptionHandlers: SubscriptionServiceHandlers = {
-    Subscribe(call, callback) {
-        handleSubscribe(call, callback).catch((error: unknown) => {
-            callback(handleGrpcError(error));
-        });
-    },
+export function createSubscriptionHandlers(deps: CreateSubscriptionHandlersDependencies): SubscriptionServiceHandlers {
+    const { subscriptionService } = deps;
 
-    Confirm(call, callback) {
-        handleConfirm(call, callback).catch((error: unknown) => {
-            callback(handleGrpcError(error));
-        });
-    },
+    return {
+        Subscribe(call, callback) {
+            handleSubscribe(subscriptionService, call, callback).catch((error: unknown) => {
+                callback(handleGrpcError(error));
+            });
+        },
 
-    Unsubscribe(call, callback) {
-        handleUnsubscribe(call, callback).catch((error: unknown) => {
-            callback(handleGrpcError(error));
-        });
-    },
+        Confirm(call, callback) {
+            handleConfirm(subscriptionService, call, callback).catch((error: unknown) => {
+                callback(handleGrpcError(error));
+            });
+        },
 
-    GetSubscriptions(call, callback) {
-        handleGetSubscriptions(call, callback).catch((error: unknown) => {
-            callback(handleGrpcError(error));
-        });
-    },
-};
+        Unsubscribe(call, callback) {
+            handleUnsubscribe(subscriptionService, call, callback).catch((error: unknown) => {
+                callback(handleGrpcError(error));
+            });
+        },
+
+        GetSubscriptions(call, callback) {
+            handleGetSubscriptions(subscriptionService, call, callback).catch((error: unknown) => {
+                callback(handleGrpcError(error));
+            });
+        },
+    };
+}

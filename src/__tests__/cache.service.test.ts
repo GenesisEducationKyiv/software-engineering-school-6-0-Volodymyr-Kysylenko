@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "../config/env.js";
-import { CacheService, cacheService } from "../services/cache.service.js";
+import { buildCacheKey } from "../services/cache/cache.keys.js";
+import { cacheService } from "../services/services.module.js";
 
 describe("Cache Service", () => {
     beforeAll(async () => {
@@ -41,6 +42,23 @@ describe("Cache Service", () => {
     it("should return null for non-existent keys", async () => {
         const result = await cacheService.get("non:existent:key");
         expect(result).toBeNull();
+    });
+
+    it("should distinguish cached null from missing keys", async () => {
+        if (!env.CACHE_ENABLED) {
+            const result = await cacheService.getEntry("test:null");
+            expect(result).toEqual({ hit: false, value: null });
+            return;
+        }
+
+        const key = "test:null";
+
+        await cacheService.set(key, null);
+        const cached = await cacheService.getEntry(key);
+        const missing = await cacheService.getEntry("test:null:missing");
+
+        expect(cached).toEqual({ hit: true, value: null });
+        expect(missing).toEqual({ hit: false, value: null });
     });
 
     it("should delete cache entries", async () => {
@@ -88,10 +106,10 @@ describe("Cache Service", () => {
     });
 
     it("should generate proper cache keys", () => {
-        const key1 = CacheService.generateKey("github", "owner", "repo");
+        const key1 = buildCacheKey("github", "owner", "repo");
         expect(key1).toBe("github:owner:repo");
 
-        const key2 = CacheService.generateKey("releases", "microsoft", "vscode", "latest");
+        const key2 = buildCacheKey("releases", "microsoft", "vscode", "latest");
         expect(key2).toBe("releases:microsoft:vscode:latest");
     });
 });

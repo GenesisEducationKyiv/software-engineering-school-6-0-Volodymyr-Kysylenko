@@ -151,7 +151,7 @@ export default defineConfig([
     },
 
     {
-        files: ["src/utils/logger.ts"],
+        files: ["src/utils/logger/logger.ts"],
         rules: {
             "no-console": "off",
         },

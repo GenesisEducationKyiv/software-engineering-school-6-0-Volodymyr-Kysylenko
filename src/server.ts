@@ -1,105 +1,68 @@
-// app
-import { createApp } from "./app.js";
-// environment
+import { createApp } from "./app/app.js";
 import { env } from "./config/env.js";
-// database
 import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
-// gRPC server
 import { startGrpcServer } from "./grpc/server.js";
-import { cacheService } from "./services/cache.service.js";
-// services
-import { emailService } from "./services/email.service.js";
-import { metricsService } from "./services/metrics.service.js";
-import { scannerService } from "./services/scanner.service.js";
-// logger
-import { logger } from "./utils/logger.js";
+import { bootstrap } from "./runtime/bootstrap.js";
+import { createScannerRunner } from "./runtime/scanner-runner.js";
+import { registerGracefulShutdown } from "./runtime/shutdown.js";
+import {
+    cacheService,
+    emailService,
+    metricsService,
+    scannerService,
+    subscriptionService,
+} from "./services/services.module.js";
+import { loadSwaggerDocument } from "./swagger/swagger.loader.js";
+import { logger } from "./utils/logger/logger.js";
 
-const { NODE_ENV, PORT, GRPC_PORT, SCAN_INTERVAL_MS } = env;
+const scannerRunner = createScannerRunner({
+    scanner: scannerService,
+    logger,
+    intervalMs: env.SCAN_INTERVAL_MS,
+});
 
-async function bootstrap() {
-    logger.info(NODE_ENV === "production" ? "Running in production mode" : "Running in development mode");
+registerGracefulShutdown({
+    logger,
+    cacheService,
+    pool,
+    scannerRunner,
+});
 
-    await runMigrations();
+void bootstrap({
+    config: {
+        nodeEnv: env.NODE_ENV,
+        port: env.PORT,
+        grpcPort: env.GRPC_PORT,
+    },
 
-    // Redis cache connection verification
-    try {
-        await cacheService.connect();
-        logger.info("Redis cache connected");
-    } catch (error) {
-        logger.warn("Redis connection failed, cache will be disabled", error);
-    }
+    logger,
 
-    // SMTP connection verification
-    try {
-        await emailService.verifyConnection();
-        logger.info("SMTP connection verified");
-    } catch (error) {
-        logger.warn("SMTP verification failed, continuing startup", error);
-    }
+    runMigrations,
 
-    // Initialize initial metrics
-    await metricsService.initializeMetrics();
+    connectCache: async () => cacheService.connect(),
+    verifyEmailConnection: async () => emailService.verifyConnection(),
+    initializeMetrics: async () => metricsService.initializeMetrics(),
 
-    // Start HTTP server
-    const app = createApp();
+    createApp: () =>
+        createApp({
+            config: {
+                rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+                rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
+                bodyLimit: env.BODY_LIMIT,
+            },
+            logger,
+            swaggerDocument: loadSwaggerDocument(env.APP_BASE_URL),
+        }),
 
-    app.listen(PORT, () => {
-        logger.info(`HTTP server started on port ${PORT}`);
-    });
-
-    // Start gRPC server
-    try {
-        await startGrpcServer(GRPC_PORT);
-    } catch (error) {
-        logger.error("Failed to start gRPC server", error);
-        process.exit(1);
-    }
-
-    // Run scanner loop
-    setInterval(() => {
-        void scannerService
-            .scanOnce()
-            .then(() => {
-                logger.info("Scanner iteration completed");
-            })
-            .catch((error: unknown) => {
-                logger.error("Scanner iteration failed", error);
-            });
-    }, SCAN_INTERVAL_MS);
-
-    // Run initial scan on startup
-    void scannerService
-        .scanOnce()
-        .then(() => {
-            logger.info("Initial scanner run completed");
-        })
-        .catch((error: unknown) => {
-            logger.error("Initial scanner run failed", error);
-        });
-}
-
-void bootstrap().catch(async (error: unknown) => {
+    startGrpcServer: async (port) => startGrpcServer(port, { subscriptionService }),
+    scannerRunner,
+}).catch(async (error: unknown) => {
     logger.error("Application bootstrap failed", error);
+
+    scannerRunner.stop();
     await cacheService.disconnect();
     await pool.end();
+
     process.exit(1);
-});
-
-async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
-    logger.info(`Received ${signal}, shutting down gracefully...`);
-
-    await cacheService.disconnect();
-    await pool.end();
-
-    process.exit(0);
-}
-
-// Graceful shutdown to ensure all resources are properly released
-process.on("SIGINT", () => {
-    void shutdown("SIGINT");
-});
-
-process.on("SIGTERM", () => {
-    void shutdown("SIGTERM");
 });

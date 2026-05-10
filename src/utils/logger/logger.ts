@@ -1,12 +1,7 @@
-import { env } from "../config/env.js";
+import { env } from "../../config/env.js";
+import type { LoggerPort } from "./logger.types.js";
 
-export interface Logger {
-    info(message: string, meta?: Record<string, unknown>): void;
-    warn(message: string, meta?: Record<string, unknown>): void;
-    error(message: string, error?: unknown, meta?: Record<string, unknown>): void;
-    debug(message: string, meta?: Record<string, unknown>): void;
-}
-export class ConsoleLogger implements Logger {
+export class ConsoleLogger implements LoggerPort {
     private readonly logLevels = ["error", "warn", "info", "debug"];
 
     constructor(private readonly context = "App") {}
@@ -64,4 +59,4 @@ export class ConsoleLogger implements Logger {
     }
 }
 
-export const logger = new ConsoleLogger();
+export const logger: LoggerPort = new ConsoleLogger();

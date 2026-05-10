@@ -1,21 +1,37 @@
-import { pool } from "../db/pool.js";
+import type { QueryResult, QueryResultRow } from "pg";
+
 import type { SubscriptionRecord } from "../types/subscription.js";
+
+export interface DatabaseClientPort {
+    query<T extends QueryResultRow>(text: string, values?: unknown[]): Promise<QueryResult<T>>;
+}
+
+export interface CreateSubscriptionInput {
+    email: string;
+    repoOwner: string;
+    repoName: string;
+    repoFullName: string;
+    confirmToken: string;
+    unsubscribeToken: string;
+    lastSeenTag: string | null;
+}
+
+export interface ReactivateSubscriptionInput {
+    id: string;
+    confirmToken: string;
+    unsubscribeToken: string;
+    lastSeenTag: string | null;
+}
 
 interface CountRow {
     count: string;
 }
 
 export class SubscriptionRepository {
-    async create(input: {
-        email: string;
-        repoOwner: string;
-        repoName: string;
-        repoFullName: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord> {
-        const result = await pool.query<SubscriptionRecord>(
+    constructor(private readonly db: DatabaseClientPort) {}
+
+    async create(input: CreateSubscriptionInput): Promise<SubscriptionRecord> {
+        const result = await this.db.query<SubscriptionRecord>(
             `
             INSERT INTO subscriptions (
                 email,
@@ -43,13 +59,8 @@ export class SubscriptionRepository {
         return result.rows[0];
     }
 
-    async reactivate(input: {
-        id: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord> {
-        const result = await pool.query<SubscriptionRecord>(
+    async reactivate(input: ReactivateSubscriptionInput): Promise<SubscriptionRecord> {
+        const result = await this.db.query<SubscriptionRecord>(
             `
             UPDATE subscriptions
             SET confirmed = FALSE,
@@ -68,7 +79,7 @@ export class SubscriptionRepository {
     }
 
     async findByEmailAndRepo(email: string, repoFullName: string): Promise<SubscriptionRecord | null> {
-        const result = await pool.query<SubscriptionRecord>(
+        const result = await this.db.query<SubscriptionRecord>(
             `
             SELECT *
             FROM subscriptions
@@ -82,7 +93,7 @@ export class SubscriptionRepository {
     }
 
     async findByConfirmToken(token: string): Promise<SubscriptionRecord | null> {
-        const result = await pool.query<SubscriptionRecord>(
+        const result = await this.db.query<SubscriptionRecord>(
             `
             SELECT *
             FROM subscriptions
@@ -96,7 +107,7 @@ export class SubscriptionRepository {
     }
 
     async findByUnsubscribeToken(token: string): Promise<SubscriptionRecord | null> {
-        const result = await pool.query<SubscriptionRecord>(
+        const result = await this.db.query<SubscriptionRecord>(
             `
             SELECT *
             FROM subscriptions
@@ -110,7 +121,7 @@ export class SubscriptionRepository {
     }
 
     async confirmById(id: string): Promise<void> {
-        await pool.query(
+        await this.db.query(
             `
             UPDATE subscriptions
             SET confirmed = TRUE,
@@ -122,7 +133,7 @@ export class SubscriptionRepository {
     }
 
     async unsubscribeById(id: string): Promise<void> {
-        await pool.query(
+        await this.db.query(
             `
             UPDATE subscriptions
             SET unsubscribed_at = COALESCE(unsubscribed_at, NOW())
@@ -133,7 +144,7 @@ export class SubscriptionRepository {
     }
 
     async listActiveByEmail(email: string): Promise<SubscriptionRecord[]> {
-        const result = await pool.query<SubscriptionRecord>(
+        const result = await this.db.query<SubscriptionRecord>(
             `
             SELECT *
             FROM subscriptions
@@ -147,7 +158,7 @@ export class SubscriptionRepository {
     }
 
     async listConfirmedActive(): Promise<SubscriptionRecord[]> {
-        const result = await pool.query<SubscriptionRecord>(
+        const result = await this.db.query<SubscriptionRecord>(
             `
             SELECT *
             FROM subscriptions
@@ -160,7 +171,7 @@ export class SubscriptionRepository {
     }
 
     async updateLastSeenTagByRepo(repoFullName: string, tag: string): Promise<void> {
-        await pool.query(
+        await this.db.query(
             `
             UPDATE subscriptions
             SET last_seen_tag = $2
@@ -173,7 +184,7 @@ export class SubscriptionRepository {
     }
 
     async countActiveSubscriptions(): Promise<number> {
-        const result = await pool.query<CountRow>(
+        const result = await this.db.query<CountRow>(
             `
             SELECT COUNT(*) AS count
             FROM subscriptions
@@ -184,5 +195,3 @@ export class SubscriptionRepository {
         return Number.parseInt(result.rows[0]?.count ?? "0", 10);
     }
 }
-
-export const subscriptionRepository = new SubscriptionRepository();

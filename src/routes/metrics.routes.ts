@@ -1,10 +1,30 @@
 import { Router } from "express";
 
-import { metricsController } from "../controllers/metrics.controller.js";
+import { createMetricsController } from "../controllers/metrics/metrics.module.js";
+import type { HealthServicePort } from "../services/health/health.types.js";
+import type { MetricsGetMetricsPort } from "../services/metrics/metrics.types.js";
+import { healthService, metricsService } from "../services/services.module.js";
 
-const { healthCheck, metricsCheck } = metricsController;
+export interface CreateMetricsRouterDependencies {
+    healthService: HealthServicePort;
+    metricsService: MetricsGetMetricsPort;
+}
 
-export const metricsRouter = Router();
+export function createMetricsRouter(deps: CreateMetricsRouterDependencies): Router {
+    const metricsController = createMetricsController({
+        healthService: deps.healthService,
+        metricsService: deps.metricsService,
+    });
 
-metricsRouter.get("/metrics", metricsCheck);
-metricsRouter.get("/health", healthCheck);
+    const router = Router();
+
+    router.get("/metrics", metricsController.metricsCheck);
+    router.get("/health", metricsController.healthCheck);
+
+    return router;
+}
+
+export const metricsRouter = createMetricsRouter({
+    healthService,
+    metricsService,
+});

@@ -3,9 +3,9 @@ import { ZodError } from "zod";
 
 import type { ErrorResponse } from "../dto/subscription.dto.js";
 import { AppError } from "../utils/errors.js";
-import type { Logger } from "../utils/logger.js";
+import type { LoggerPort } from "../utils/logger/logger.types.js";
 
-export function createErrorHandler(logger: Logger) {
+export function createErrorHandler(logger: LoggerPort) {
     return (error: unknown, req: Request, res: Response, _next: NextFunction): void => {
         const requestId = res.getHeader("x-request-id") as string;
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { NextFunction, Request, Response } from "express";
 
-import type { Logger } from "../utils/logger.js";
+import type { LoggerPort } from "../utils/logger/logger.types.js";
 
 declare global {
     namespace Express {
@@ -19,7 +19,7 @@ export function requestIdMiddleware(req: Request, res: Response, next: NextFunct
     next();
 }
 
-export function createRequestLoggerMiddleware(logger: Logger) {
+export function createRequestLoggerMiddleware(logger: LoggerPort) {
     return (req: Request, res: Response, next: NextFunction): void => {
         const start = Date.now();
 

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { env } from "../config/env.js";
 import { createGrpcClient } from "../grpc/client.js";
 import { createGrpcServer } from "../grpc/server.js";
+import { subscriptionService } from "../services/services.module.js";
 
 describe("gRPC Subscription Service", () => {
     let server: grpc.Server;
@@ -11,7 +12,7 @@ describe("gRPC Subscription Service", () => {
     const testPort = env.GRPC_PORT;
 
     beforeAll(async () => {
-        server = createGrpcServer();
+        server = createGrpcServer({ subscriptionService });
 
         await new Promise<void>((resolve, reject) => {
             server.bindAsync(`localhost:${testPort}`, grpc.ServerCredentials.createInsecure(), (error) => {

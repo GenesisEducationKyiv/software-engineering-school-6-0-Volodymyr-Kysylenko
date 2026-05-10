@@ -2,10 +2,10 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApp } from "../../app.js";
 import { env } from "../../config/env.js";
 import { runMigrations } from "../../db/migrate.js";
 import { pool } from "../../db/pool.js";
+import { createTestApp } from "../helpers/create-test-app.js";
 
 describe("Subscription API Integration Tests", () => {
     let app: Express;
@@ -31,7 +31,7 @@ describe("Subscription API Integration Tests", () => {
         try {
             await pool.query("SELECT 1");
             await runMigrations();
-            app = createApp();
+            app = createTestApp();
 
             server = app.listen(env.PORT);
             canConnectToDatabase = true;
