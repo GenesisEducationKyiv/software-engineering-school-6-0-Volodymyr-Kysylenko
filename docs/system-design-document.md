@@ -11,23 +11,25 @@
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
-2. [High-Level Architecture](#2-high-level-architecture)
-3. [Architecture Style](#3-architecture-style)
-4. [Main Components](#4-main-components)
-5. [REST API Design](#5-rest-api-design)
-6. [gRPC Design](#6-grpc-design)
-7. [Database Design](#7-database-design)
-8. [Caching Strategy](#8-caching-strategy)
-9. [Validation and Error Handling](#9-validation-and-error-handling)
-10. [Security Considerations](#10-security-considerations)
-11. [Scalability Considerations](#11-scalability-considerations)
-12. [Reliability Considerations](#12-reliability-considerations)
-13. [Observability and Monitoring](#13-observability-and-monitoring)
-14. [CI/CD Pipeline](#14-cicd-pipeline)
-15. [Testing Strategy](#15-testing-strategy)
-16. [Deployment Architecture](#16-deployment-architecture)
-17. [Trade-offs and Limitations](#17-trade-offs-and-limitations)
-18. [Future Improvements](#18-future-improvements)
+2. [System Requirements](#2-system-requirements)
+3. [Load Estimation](#3-load-estimation)
+4. [High-Level Architecture](#4-high-level-architecture)
+5. [Architecture Style](#5-architecture-style)
+6. [Main Components](#6-main-components)
+7. [REST API Design](#7-rest-api-design)
+8. [gRPC Design](#8-grpc-design)
+9. [Database Design](#9-database-design)
+10. [Caching Strategy](#10-caching-strategy)
+11. [Validation and Error Handling](#11-validation-and-error-handling)
+12. [Security Considerations](#12-security-considerations)
+13. [Scalability Considerations](#13-scalability-considerations)
+14. [Reliability Considerations](#14-reliability-considerations)
+15. [Observability and Monitoring](#15-observability-and-monitoring)
+16. [CI/CD Pipeline](#16-cicd-pipeline)
+17. [Testing Strategy](#17-testing-strategy)
+18. [Deployment Architecture](#18-deployment-architecture)
+19. [Trade-offs and Limitations](#19-trade-offs-and-limitations)
+20. [Future Improvements](#20-future-improvements)
 
 ---
 
@@ -86,7 +88,122 @@ A background scanner periodically polls the GitHub API for new releases and send
 
 ---
 
-## 2. High-Level Architecture
+## 2. System Requirements
+
+### 2.1 Functional Requirements
+
+| ID    | Requirement                                                                                                                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-1  | A user can subscribe to notifications for any public GitHub repository by providing an email address and repository identifier (owner/repo). |
+| FR-2  | The system validates repository existence against the GitHub REST API before creating a subscription.                                        |
+| FR-3  | The system sends a confirmation email containing a unique confirmation token after a subscription request is created.                        |
+| FR-4  | A subscription becomes active only after successful email confirmation (double opt-in flow).                                                 |
+| FR-5  | The system periodically scans GitHub repositories for newly published releases.                                                              |
+| FR-6  | When a new release is detected, the system sends notification emails to all active subscribers of the repository.                            |
+| FR-7  | Every notification email contains a unique unsubscribe link.                                                                                 |
+| FR-8  | A user can unsubscribe without authentication using the unsubscribe token.                                                                   |
+| FR-9  | A user can retrieve the list of active subscriptions associated with an email address.                                                       |
+| FR-10 | The system exposes both REST and gRPC APIs over the same business logic layer.                                                               |
+| FR-11 | The system exposes health and metrics endpoints for operational monitoring.                                                                  |
+| FR-12 | The system provides a minimal browser-accessible HTML interface for subscription management.                                                 |
+
+### 2.2 Non-Functional Requirements
+
+| Category        | Requirement                 | Target / Rationale                                                    |
+| --------------- | --------------------------- | --------------------------------------------------------------------- |
+| Availability    | Service availability        | Best-effort availability for a single-node educational deployment     |
+| Latency         | REST API response time      | P95 < 500 ms excluding external API latency                           |
+| Scalability     | Active subscriptions        | Support low-to-moderate workloads (~1,000–5,000 active subscriptions) |
+| Scalability     | Unique tracked repositories | Support several hundred repositories without architectural changes    |
+| Reliability     | Email delivery failures     | Failed email delivery must not terminate scanner execution            |
+| Reliability     | Application startup         | Fail-fast if required environment variables are missing or invalid    |
+| Security        | Abuse prevention            | Rate limiting and origin validation enabled for public endpoints      |
+| Security        | Token safety                | Confirmation and unsubscribe tokens must be cryptographically secure  |
+| Security        | Transport encryption        | HTTPS termination at reverse proxy layer                              |
+| Maintainability | Logging                     | Structured JSON logs with request correlation                         |
+| Maintainability | Validation                  | Centralized schema validation for all external inputs                 |
+| Observability   | Metrics                     | Prometheus-compatible metrics endpoint                                |
+| Testability     | Automated tests             | Unit and integration test coverage for core flows                     |
+| Deployability   | Infrastructure              | Deployable as a single Docker Compose stack                           |
+
+### 2.3 Constraints
+
+| Type              | Constraint                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| External API      | GitHub API rate limits apply (60 req/hour unauthenticated, 5,000 req/hour authenticated).                                |
+| Infrastructure    | Current deployment is a single VPS instance with no horizontal scaling.                                                  |
+| Scanner           | The background scanner currently runs in-process within the application runtime.                                         |
+| Database          | PostgreSQL is deployed as a single instance without replication.                                                         |
+| Notifications     | Email delivery depends on third-party SMTP provider availability.                                                        |
+| Educational Scope | The project prioritizes engineering practices and architectural clarity over enterprise-scale infrastructure complexity. |
+| Repository Scope  | Only public GitHub repositories are supported.                                                                           |
+| Release Detection | The system relies on polling rather than GitHub webhooks in the current implementation.                                  |
+
+---
+
+## 3. Load Estimation
+
+### 3.1 Expected Usage
+
+The current project is educational and intended for low-to-moderate workloads rather than internet-scale traffic.
+
+| Metric                       | Estimate     | Notes                                              |
+| ---------------------------- | ------------ | -------------------------------------------------- |
+| Active subscriptions         | ~1,000       | Expected upper bound for educational usage         |
+| Unique repositories          | ~200–500     | Multiple subscribers may watch the same repository |
+| New subscriptions per day    | ~10–30       | Low daily growth                                   |
+| Subscription lookups per day | ~20–50       | Limited user interaction                           |
+| Scanner interval             | 5–15 minutes | Configurable interval                              |
+| Concurrent API requests      | Low          | Primarily human-driven traffic                     |
+
+### 3.2 GitHub API Load
+
+The scanner groups subscriptions by repository to minimize GitHub API calls.
+
+| Metric                      | Estimate                      |
+| --------------------------- | ----------------------------- |
+| GitHub API calls per scan   | ~1 call per unique repository |
+| Example: 300 repositories   | ~300 API calls per scan       |
+| Example: 10-minute interval | ~1,800 API calls/hour         |
+| Authenticated GitHub limit  | 5,000 requests/hour           |
+
+The current architecture is intentionally designed to remain within GitHub authenticated API limits under expected educational workloads.
+
+Redis caching additionally reduces repeated repository validation requests and repeated latest-release lookups.
+
+### 3.3 Database Size Estimation
+
+| Entity                   | Estimated Row Size | Estimated Rows | Estimated Size |
+| ------------------------ | ------------------ | -------------- | -------------- |
+| Subscriptions            | ~400–600 B         | 1,000–5,000    | ~2–3 MB        |
+| Metrics / auxiliary data | Negligible         | —              | —              |
+
+The expected database size is small and easily manageable on a single PostgreSQL instance.
+
+### 3.4 Resource Utilization Expectations
+
+| Resource | Expected Usage                                      |
+| -------- | --------------------------------------------------- |
+| CPU      | Low-to-moderate (primarily I/O-bound workload)      |
+| Memory   | < 1 GB application memory under expected load       |
+| Network  | Mostly outbound HTTPS (GitHub API) and SMTP traffic |
+| Disk     | Minimal growth due to small relational dataset      |
+
+The workload is primarily network-bound rather than CPU-bound because most operations involve external I/O (GitHub API, SMTP, PostgreSQL, Redis).
+
+### 3.5 Bottlenecks
+
+The current architecture is constrained primarily by:
+
+- GitHub API rate limits
+- Single-instance scanner execution
+- SMTP provider throughput
+- Single-node PostgreSQL deployment
+- Shared VPS resources between all containers
+
+These constraints are acceptable for the current educational scope and expected workload.
+
+## 4. High-Level Architecture
 
 ```mermaid
 graph TD
@@ -153,7 +270,7 @@ graph TD
 
 ---
 
-## 3. Architecture Style
+## 5. Architecture Style
 
 ### Monolithic Modular Architecture
 
@@ -194,7 +311,7 @@ But PostgreSQL provides advantages if the system grows: mature indexing, partial
 
 Redis was used because it was part of the project requirements. For a simple educational project, a lighter caching solution could also be sufficient, for example an in-process `Map`, `lru-cache`, or `node-cache`. However, Redis provides a more production-oriented caching layer and better represents how caching is commonly handled outside a single application process.
 
-In this project, Redis is used exclusively as a read-through cache for GitHub API responses. GitHub's unauthenticated rate limit is 60 requests/hour per IP, while the authenticated limit is 5,000 requests/hour. Caching repository existence checks and latest release lookups dramatically reduces API call frequency and helps avoid rate-limit pressure.
+In this project, Redis is used exclusively as a read-through cache for GitHub API responses. GitHub's unauthenticated rate limit is 60 requests/hour per IP, while the authenticated limit is 5,000 requests/hour. Caching repository existence checks and latest release lookups reduces API call frequency and helps avoid rate-limit pressure.
 
 Cache entries have a configurable TTL, so cached data is automatically considered stale after a defined period. After expiry, the system falls back to a live GitHub API call and refreshes the cache.
 
@@ -202,7 +319,7 @@ Redis is optional – the system degrades gracefully to direct API calls when Re
 
 ---
 
-## 4. Main Components
+## 6. Main Components
 
 ### 4.1 Express Application (`src/app.ts`)
 
@@ -214,9 +331,9 @@ The Express application is constructed in a factory function (`createApp`) to fa
 - Body parsing with a configurable size limit (`BODY_LIMIT`).
 - Subscription API router (`/api`).
 - HTML page router.
-- Metrics router (`/metrics`).
-- Health router (`/health`).
-- Swagger UI (`/api-docs`).
+- Metrics router (`/api/metrics`).
+- Health router (`/api/health`).
+- Swagger UI (`/swagger`).
 
 ### 4.2 gRPC Server (`src/grpc/server.ts`)
 
@@ -293,7 +410,7 @@ Implements database access via parameterised queries against the PostgreSQL conn
 
 ---
 
-## 5. REST API Design
+## 7. REST API Design
 
 All REST endpoints are mounted under the `/api` prefix. Requests and responses use `application/json`. HTML-rendered pages (for browser navigation) are served under the root path `/`.
 
@@ -349,7 +466,7 @@ All REST endpoints are mounted under the `/api` prefix. Requests and responses u
 
 ---
 
-## 6. gRPC Design
+## 8. gRPC Design
 
 ### 6.1 Proto Schema (`proto/subscription.proto`)
 
@@ -409,7 +526,7 @@ sequenceDiagram
 
 ---
 
-## 7. Database Design
+## 9. Database Design
 
 ### 7.1 Logical Model
 
@@ -489,7 +606,7 @@ stateDiagram-v2
 
 ---
 
-## 8. Caching Strategy
+## 10. Caching Strategy
 
 Redis is used as a read-through, TTL-based cache for external GitHub API responses. The application never writes through to GitHub – cache entries are populated on cache miss and expire automatically.
 
@@ -517,7 +634,7 @@ flowchart LR
 
 ---
 
-## 9. Validation and Error Handling
+## 11. Validation and Error Handling
 
 ### Validation Strategy
 
@@ -556,7 +673,7 @@ The Express error handler (`src/middleware/error-handler.ts`) intercepts all thr
 
 ---
 
-## 10. Security Considerations
+## 12. Security Considerations
 
 ### HTTP Security Headers
 
@@ -593,7 +710,7 @@ The gRPC server binds with `ServerCredentials.createInsecure()`. TLS is terminat
 
 ---
 
-## 11. Scalability Considerations
+## 13. Scalability Considerations
 
 ### Current Infrastructure Constraints
 
@@ -674,7 +791,7 @@ The remaining resources are reserved for the operating system, Docker runtime, r
 
 ---
 
-## 12. Reliability Considerations
+## 14. Reliability Considerations
 
 ### Health Checks
 
@@ -696,7 +813,7 @@ This ensures in-flight requests complete and no database connections are abandon
 
 ---
 
-## 13. Observability and Monitoring
+## 15. Observability and Monitoring
 
 ### Structured Logging
 
@@ -733,7 +850,7 @@ The `/metrics` endpoint serves Prometheus text format. Metrics are collected by 
 
 ---
 
-## 14. CI/CD Pipeline
+## 16. CI/CD Pipeline
 
 The project uses **GitHub Actions** for continuous integration.
 
@@ -759,7 +876,7 @@ flowchart TB
     M --> N[Done]
 ```
 
-## 15. Testing Strategy
+## 17. Testing Strategy
 
 **Vitest** is used for all automated test.
 
@@ -772,7 +889,7 @@ flowchart TB
 
 ---
 
-## 16. Deployment Architecture
+## 18. Deployment Architecture
 
 ### Strategy
 
@@ -833,7 +950,7 @@ These trade-offs are acceptable for the current educational scope and expected s
 
 ---
 
-## 17. Trade-offs and Limitations
+## 19. Trade-offs and Limitations
 
 <table>
     <thead>
@@ -934,7 +1051,7 @@ These trade-offs are acceptable for the current educational scope and expected s
 
 ---
 
-## 18. Future Improvements
+## 20. Future Improvements
 
 - Further refactor modules according to SOLID and GRASP principles to improve maintainability, reduce coupling, and simplify future feature expansion.
 - Add stronger service-to-service security mechanisms such as mTLS for gRPC communication.
