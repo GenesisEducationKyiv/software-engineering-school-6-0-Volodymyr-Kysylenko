@@ -215,28 +215,14 @@ graph TD
 
     subgraph Edge
         CF["Cloudflare"]
-        Nginx["Nginx (Reverse Proxy / TLS Termination)"]
+        Nginx["Nginx Reverse Proxy"]
     end
 
-    subgraph Application["Application"]
-        Metrics["Metrics Endpoint"]
-        REST["REST API"]
-        GRPC["gRPC Server"]
-
-        subgraph SharedServices["Shared Services"]
-            SubscriptionService["Subscription Service"]
-            GitHubService["GitHub Service"]
-            EmailService["Email Service"]
-            CacheService["Cache Service"]
-            ScannerService["Scanner Service"]
-            HealthService["Health Service"]
-            MetricsService["Metrics Service"]
-        end
-    end
+    App["Application Monolith"]
 
     subgraph Data
-        PG["PostgreSQL (Primary Storage)"]
-        Redis["Redis (Optional Cache)"]
+        PG["PostgreSQL"]
+        Redis["Redis Cache"]
     end
 
     subgraph External
@@ -253,19 +239,14 @@ graph TD
     GRPCClient -->|gRPC over HTTP/2| CF
 
     CF -->|HTTPS| Nginx
-    Nginx -->|HTTP| REST
-    Nginx -->|gRPC / HTTP2| GRPC
+    Nginx -->|HTTP / gRPC| App
 
-    REST --> SharedServices
-    GRPC --> SharedServices
+    App --> PG
+    App --> Redis
+    App --> GitHub
+    App --> SMTP
 
-    SubscriptionService --> PG
-    CacheService --> Redis
-
-    GitHubService -->|fetch releases| GitHub
-    EmailService -->|send email| SMTP
-
-    Prometheus -->|scrape| MetricsService
+    Prometheus -->|scrape /metrics| App
 ```
 
 ---
@@ -321,7 +302,7 @@ Redis is optional – the system degrades gracefully to direct API calls when Re
 
 ## 6. Main Components
 
-### 4.1 Express Application (`src/app.ts`)
+### 6.1 Express Application (`src/app.ts`)
 
 The Express application is constructed in a factory function (`createApp`) to facilitate testing. It registers:
 
@@ -335,11 +316,11 @@ The Express application is constructed in a factory function (`createApp`) to fa
 - Health router (`/api/health`).
 - Swagger UI (`/swagger`).
 
-### 4.2 gRPC Server (`src/grpc/server.ts`)
+### 6.2 gRPC Server (`src/grpc/server.ts`)
 
 A standalone gRPC server bootstrapped alongside Express on a separate port (`GRPC_PORT`, default `50051`). The server loads the `subscription.proto` schema at startup via `@grpc/proto-loader` and registers the `SubscriptionService` handlers. It runs on `0.0.0.0` with insecure credentials, TLS termination is handled at the infrastructure layer by Nginx.
 
-### 4.3 Subscription Service (`src/services/subscription.service.ts`)
+### 6.3 Subscription Service (`src/services/subscription.service.ts`)
 
 Orchestrates all subscription lifecycle operations:
 
@@ -348,18 +329,18 @@ Orchestrates all subscription lifecycle operations:
 - **Unsubscribe:** sets `unsubscribed_at`, logically deleting the subscription.
 - **List:** returns confirmed, active subscriptions **by email**.
 
-### 4.4 GitHub Service (`src/services/github.service.ts`)
+### 6.4 GitHub Service (`src/services/github.service.ts`)
 
 Encapsulates all GitHub REST API interactions:
 
 - `assertRepositoryExists` – verifies a repository is public and accessible before allowing a subscription.
 - `getLatestRelease` – fetches the most recent published release for a repository.
 
-### 4.5 Cache Service (`src/services/cache.service.ts`)
+### 6.5 Cache Service (`src/services/cache.service.ts`)
 
 Wraps the `redis` client with a safe interface. If Redis is unreachable or disabled, all cache operations return `null` and execution continues normally.
 
-### 4.6 Scanner Service (`src/services/scanner.service.ts`)
+### 6.6 Scanner Service (`src/services/scanner.service.ts`)
 
 A background job that executes on a configurable interval:
 
@@ -370,7 +351,7 @@ A background job that executes on a configurable interval:
 5. Identifies stale subscriptions.
 6. Sends a release notification email for each stale subscriber.
 
-### 4.7 Email Service (`src/services/email.service.ts`)
+### 6.7 Email Service (`src/services/email.service.ts`)
 
 Wraps `nodemailer` with:
 
@@ -378,7 +359,7 @@ Wraps `nodemailer` with:
 - Configurable SMTP connection, greeting, and socket timeouts.
 - Two email templates: **confirmation** and **release notification**.
 
-### 4.8 Metrics Service (`src/services/metrics.service.ts`)
+### 6.8 Metrics Service (`src/services/metrics.service.ts`)
 
 Manages a dedicated `prom-client` registry with the following instruments:
 
@@ -391,11 +372,11 @@ Manages a dedicated `prom-client` registry with the following instruments:
 
 Default Node.js process metrics (event loop lag, heap usage, GC duration) are also collected.
 
-### 4.9 Health Service (`src/services/health.service.ts`)
+### 6.9 Health Service (`src/services/health.service.ts`)
 
 Performs periodic liveness checks against the PostgreSQL pool and Redis client, and exposes the result via `GET /api/health`. The Docker Compose `healthcheck` directive polls this endpoint to determine container readiness.
 
-### 4.10 Repository Layer (`src/repositories/subscription.repository.ts`)
+### 6.10 Repository Layer (`src/repositories/subscription.repository.ts`)
 
 Implements database access via parameterised queries against the PostgreSQL connection pool. There is no ORM – raw SQL is used for full query visibility and control. The repository provides:
 
@@ -468,7 +449,7 @@ All REST endpoints are mounted under the `/api` prefix. Requests and responses u
 
 ## 8. gRPC Design
 
-### 6.1 Proto Schema (`proto/subscription.proto`)
+### 8.1 Proto Schema (`proto/subscription.proto`)
 
 ```protobuf
 syntax = "proto3";
@@ -484,7 +465,7 @@ service SubscriptionService {
 
 The service exposes the same four core operations as the REST API, enabling programmatic clients to consume the system over HTTP/2 with strongly-typed, binary-encoded messages.
 
-### 6.2 gRPC Request Lifecycle
+### 8.2 gRPC Request Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -528,7 +509,7 @@ sequenceDiagram
 
 ## 9. Database Design
 
-### 7.1 Logical Model
+### 9.1 Logical Model
 
 The current version of the system uses a simple relational model with one main entity: `Subscription`.
 
@@ -552,7 +533,7 @@ erDiagram
     }
 ```
 
-### 7.2 Physical Schema
+### 9.2 Physical Schema
 
 The current physical schema uses a single PostgreSQL table: `subscriptions`.
 
@@ -574,7 +555,7 @@ CREATE TABLE subscriptions (
 );
 ```
 
-### 7.3 Indexes
+### 9.3 Indexes
 
 | Index                           | Columns                   | Condition                       | Purpose                                           |
 | ------------------------------- | ------------------------- | ------------------------------- | ------------------------------------------------- |
@@ -587,7 +568,7 @@ CREATE TABLE subscriptions (
 
 ### Design Decisions
 
-- **Soft deletes.** Preserves audit history and simplifies re-subscription logic.
+- **Soft deletes:** Uses `unsubscribed_at` to represent inactive subscriptions and support re-subscription by reactivating an existing record instead of creating duplicates.
 - **No ORM.** Raw parameterised SQL is used throughout. This avoids ORM overhead, keeps queries explicit and auditable, and removes an external dependency with its own abstraction layer.
 - **`pgcrypto` for UUIDs.** `gen_random_uuid()` generates version-4 UUIDs server-side, avoiding application-side UUID generation and its associated consistency concerns.
 - **Migrations.** Schema changes are applied via numbered SQL migration files (`/migrations`) executed at startup by the `migrate.ts` module.
@@ -1060,6 +1041,5 @@ These trade-offs are acceptable for the current educational scope and expected s
 - Introduce centralized monitoring, metrics collection, and alerting to track application health, uptime, resource usage, and failures.
 - Support GitHub webhooks in addition to polling to reduce notification latency and API usage.
 - Add optional user accounts and a management dashboard for subscription administration.
-- Add stronger service-to-service security mechanisms.
 - Add container vulnerability scanning and dependency auditing to improve infrastructure and supply-chain security.
 - Implement retry queues and dead-letter handling for email delivery failures.

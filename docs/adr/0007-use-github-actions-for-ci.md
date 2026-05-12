@@ -45,11 +45,14 @@ The test job starts only after the quality job passes, ensuring broken builds do
 - Every commit is automatically validated before merge.
 - Integration tests run against real database and cache instances, not mocks.
 - Pipeline definition lives in the repository and changes are tracked in version history.
+- Sequential quality gates reduce the chance of shipping formatting, type, or build regressions into deployment workflows.
 
 **Negative:**
 
 - No automated deployment step (CD) yet, deployment remains manual.
 - Execution time is bounded by GitHub-hosted runner performance.
+- Security automation is partial until dependency and container vulnerability scanning are enforced in CI.
+- Manual release execution keeps higher operational risk than fully automated, approval-gated CD.
 
 ## Alternatives Considered
 

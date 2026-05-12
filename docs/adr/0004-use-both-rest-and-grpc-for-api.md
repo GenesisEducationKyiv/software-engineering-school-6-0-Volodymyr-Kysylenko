@@ -21,17 +21,18 @@ Expose all core operations through two independent API surfaces - **REST over HT
 - REST surface is accessible from browsers and any HTTP client.
 - gRPC surface provides strongly typed, efficient transport for service-to-service consumers.
 - Both transports benefit from the same validation, error handling, and logging infrastructure.
+- Shared business logic across both transports reduces drift in domain behavior and persistence rules.
 
 **Negative:**
 
 - Two validation paths must be maintained in parallel (middleware for REST, helpers for gRPC).
 - Proto schema changes require a build step to regenerate TypeScript stubs.
 - Slightly larger testing surface to cover both transports.
+- Contract versioning and compatibility checks are required to prevent divergence between REST DTOs and gRPC proto models.
+- gRPC traffic currently depends on infrastructure-level TLS termination; stronger service-to-service transport security may be required later.
 
 ## Alternatives Considered
 
-**REST only** - rejected, does not meet project requirements.
+**REST only** - not selected because the assignment explicitly required exposing both REST and gRPC APIs.
 
-**gRPC only** - rejected, does not meet project requirements.
-
-**GraphQL** - rejected, does not meet project requirements.
+**gRPC only** - not selected because the assignment explicitly required exposing both REST and gRPC APIs.

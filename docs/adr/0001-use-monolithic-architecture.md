@@ -27,13 +27,18 @@ Routes → Middleware → Controllers → Services → Repositories → Database
 - Simpler deployment, debugging, and local development.
 - Lower infrastructure cost on a single VPS.
 - All code shares one test suite, type system, and dependency graph.
+- Clear ownership and faster incident triage when combined with centralized logs and request correlation.
 
 **Negative:**
 
 - The background scanner cannot be scaled independently of the REST API.
 - The in-process scanner mutex prevents safe horizontal scaling without a coordination mechanism.
 - As the domain grows, module coupling risk increases without strict boundary enforcement.
+- Single-node deployment keeps infrastructure simple but increases recovery pressure on backup and restore procedures.
+- Growth beyond current load requires distributed scanner coordination before safe multi-instance rollout.
 
 ## Alternatives Considered
 
 **Microservices** - rejected due to disproportionate operational complexity for the current scope. Service decomposition, distributed tracing, network contracts, and separate CI pipelines add overhead that is not justified at this scale.
+
+Microservices remain a future option if independent scanner scaling, team growth, or stricter availability targets become mandatory.
