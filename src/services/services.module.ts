@@ -80,7 +80,7 @@ const cacheModule = createCacheModule({
 });
 
 const githubModule = createGithubModule({
-    httpClient: new DefaultGitHubHttpClient(env.GITHUB_API_TIMEOUT_MS),
+    httpClient: new DefaultGitHubHttpClient(env.GITHUB_API_TIMEOUT_MS, fetch),
     cache: cacheModule.cacheService,
     logger,
     metrics: metricsModule.metricsService,

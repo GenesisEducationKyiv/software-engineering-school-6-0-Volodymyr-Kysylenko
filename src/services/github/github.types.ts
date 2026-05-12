@@ -17,6 +17,8 @@ export interface GitHubHttpClientPort {
     fetchWithTimeout(url: string, options: RequestInit): Promise<Response>;
 }
 
+export type GitHubFetchPort = (url: string, options?: RequestInit) => Promise<Response>;
+
 export interface GitHubCachePort {
     get<T>(key: string): Promise<T | null>;
     getEntry<T>(key: string): Promise<{ hit: true; value: T } | { hit: false; value: null }>;
