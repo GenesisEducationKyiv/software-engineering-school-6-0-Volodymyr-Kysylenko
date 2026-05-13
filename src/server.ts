@@ -7,11 +7,10 @@ import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
-import { cacheService } from "./services/cache/cache.service.js";
-// services
-import { emailService } from "./services/email/email.service.js";
 import { metricsService } from "./services/metrics/metrics.service.js";
 import { scannerService } from "./services/scanner/scanner.service.js";
+// services
+import { cacheService, emailService } from "./services/services.module.js";
 // logger
 import { logger } from "./utils/logger/logger.js";
 

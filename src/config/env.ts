@@ -42,6 +42,8 @@ const EnvSchema = z.object({
     SMTP_PASS: z.string().optional(),
     EMAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
     EMAIL_RETRY_ATTEMPTS: z.coerce.number().int().positive().default(3),
+    EMAIL_RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(1000),
+    EMAIL_RETRY_MAX_DELAY_MS: z.coerce.number().int().positive().default(10000),
 
     // Redis cache
     REDIS_URL: z.string().url().optional().default("redis://localhost:6379"),

@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "../config/env.js";
-import { CacheService, cacheService } from "../services/cache/cache.service.js";
+import { buildCacheKey } from "../services/cache/cache.keys.js";
+import { cacheService } from "../services/services.module.js";
 
 describe("Cache Service", () => {
     beforeAll(async () => {
@@ -42,7 +43,6 @@ describe("Cache Service", () => {
         const result = await cacheService.get("non:existent:key");
         expect(result).toBeNull();
     });
-
     it("should delete cache entries", async () => {
         if (!env.CACHE_ENABLED) {
             const key = "test:delete";
@@ -88,10 +88,10 @@ describe("Cache Service", () => {
     });
 
     it("should generate proper cache keys", () => {
-        const key1 = CacheService.generateKey("github", "owner", "repo");
+        const key1 = buildCacheKey("github", "owner", "repo");
         expect(key1).toBe("github:owner:repo");
 
-        const key2 = CacheService.generateKey("releases", "microsoft", "vscode", "latest");
+        const key2 = buildCacheKey("releases", "microsoft", "vscode", "latest");
         expect(key2).toBe("releases:microsoft:vscode:latest");
     });
 });
