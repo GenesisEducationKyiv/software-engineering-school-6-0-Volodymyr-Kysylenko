@@ -7,13 +7,13 @@ import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
-import { cacheService } from "./services/cache.service.js";
+import { cacheService } from "./services/cache/cache.service.js";
 // services
-import { emailService } from "./services/email.service.js";
-import { metricsService } from "./services/metrics.service.js";
-import { scannerService } from "./services/scanner.service.js";
+import { emailService } from "./services/email/email.service.js";
+import { metricsService } from "./services/metrics/metrics.service.js";
+import { scannerService } from "./services/scanner/scanner.service.js";
 // logger
-import { logger } from "./utils/logger.js";
+import { logger } from "./utils/logger/logger.js";
 
 const { NODE_ENV, PORT, GRPC_PORT, SCAN_INTERVAL_MS } = env;
 

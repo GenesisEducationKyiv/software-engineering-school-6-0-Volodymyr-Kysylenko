@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
-import { env } from "../config/env.js";
-import { metricsService } from "./metrics.service.js";
+import { env } from "../../config/env.js";
+import { metricsService } from "../metrics/metrics.service.js";
 
 const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_EMAIL_FROM } = env;
 

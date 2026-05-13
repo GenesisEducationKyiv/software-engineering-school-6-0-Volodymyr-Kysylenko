@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { logger } from "../utils/logger.js";
+import { logger } from "../utils/logger/logger.js";
 import { pool } from "./pool.js";
 
 const __filename = fileURLToPath(import.meta.url);

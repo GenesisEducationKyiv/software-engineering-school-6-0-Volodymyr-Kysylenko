@@ -1,10 +1,10 @@
-import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import type { SubscriptionResponse } from "../types/subscription.js";
-import { generateToken } from "../utils/crypto.js";
-import { AppError } from "../utils/errors.js";
-import { parseRepo, validateEmail } from "../utils/validators.js";
-import { emailService } from "./email.service.js";
-import { githubService } from "./github.service.js";
+import { subscriptionRepository } from "../../repositories/subscription.repository.js";
+import type { SubscriptionResponse } from "../../types/subscription.js";
+import { generateToken } from "../../utils/crypto.js";
+import { AppError } from "../../utils/errors.js";
+import { parseRepo, validateEmail } from "../../utils/validators.js";
+import { emailService } from "../email/email.service.js";
+import { githubService } from "../github/github.service.js";
 
 export class SubscriptionService {
     private validateToken(token: string): void {

@@ -1,7 +1,7 @@
 import { createClient, type RedisClientType } from "redis";
 
-import { env } from "../config/env.js";
-import { logger } from "../utils/logger.js";
+import { env } from "../../config/env.js";
+import { logger } from "../../utils/logger/logger.js";
 
 class CacheService {
     private client: RedisClientType | null = null;

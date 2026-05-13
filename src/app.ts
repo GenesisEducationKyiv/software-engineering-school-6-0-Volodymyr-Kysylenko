@@ -24,7 +24,7 @@ import { metricsRouter } from "./routes/metrics.routes.js";
 import { subscriptionPagesRouter, subscriptionRouter } from "./routes/subscription.routes.js";
 // utils
 import { AppError } from "./utils/errors.js";
-import { logger } from "./utils/logger.js";
+import { logger } from "./utils/logger/logger.js";
 
 type SwaggerDocument = JsonObject & {
     host?: string;

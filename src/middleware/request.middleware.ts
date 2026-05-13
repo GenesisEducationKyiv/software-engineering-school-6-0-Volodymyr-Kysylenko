@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { NextFunction, Request, Response } from "express";
 
-import type { Logger } from "../utils/logger.js";
+import type { Logger } from "../utils/logger/logger.js";
 
 declare global {
     namespace Express {

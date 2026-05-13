@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 
 import type { ErrorResponse } from "../dto/subscription.dto.js";
 import { AppError } from "../utils/errors.js";
-import type { Logger } from "../utils/logger.js";
+import type { Logger } from "../utils/logger/logger.js";
 
 export function createErrorHandler(logger: Logger) {
     return (error: unknown, req: Request, res: Response, _next: NextFunction): void => {
