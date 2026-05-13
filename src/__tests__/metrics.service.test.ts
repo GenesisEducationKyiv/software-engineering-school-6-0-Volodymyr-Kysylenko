@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { metricsService } from "../services/metrics/metrics.service.js";
+import { metricsService } from "../services/services.module.js";
 
 describe("Prometheus Metrics - Simplified", () => {
     it("should generate business metrics in Prometheus format", async () => {

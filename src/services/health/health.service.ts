@@ -1,29 +1,16 @@
-export interface HealthCheck {
-    name: string;
-    status: "healthy" | "unhealthy" | "degraded";
-    message?: string;
-    responseTime?: number;
-    details?: Record<string, unknown>;
-}
+import type {
+    HealthCheck,
+    HealthCheckFunction,
+    HealthCheckResult,
+    HealthServiceDependencies,
+    HealthServicePort,
+} from "./health.types.js";
 
-export interface HealthCheckResult {
-    status: "healthy" | "unhealthy" | "degraded";
-    timestamp: string;
-    uptime: number;
-    version: string;
-    checks: HealthCheck[];
-}
+export class HealthService implements HealthServicePort {
+    private readonly checks: Map<string, HealthCheckFunction>;
 
-export class HealthService {
-    private readonly checks = new Map<string, () => Promise<HealthCheck>>();
-    private readonly version: string;
-
-    constructor(version: string = process.env.npm_package_version ?? "1.0.0") {
-        this.version = version;
-    }
-
-    registerCheck(name: string, checkFn: () => Promise<HealthCheck>): void {
-        this.checks.set(name, checkFn);
+    constructor(private readonly deps: HealthServiceDependencies) {
+        this.checks = deps.checks ?? new Map<string, HealthCheckFunction>();
     }
 
     async getHealth(): Promise<HealthCheckResult> {
@@ -32,11 +19,14 @@ export class HealthService {
         for (const [name, checkFn] of this.checks) {
             try {
                 const start = Date.now();
+
                 const check = await checkFn();
+
                 const responseTime = Date.now() - start;
 
                 checks.push({
                     ...check,
+                    name,
                     responseTime,
                 });
             } catch (error) {
@@ -49,33 +39,14 @@ export class HealthService {
             }
         }
 
-        const overallStatus = this.calculateOverallStatus(checks);
+        const overallStatus = this.deps.statusCalculator.calculateOverallStatus(checks);
 
         return {
             status: overallStatus,
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            version: this.version,
+            timestamp: this.deps.environment.getNow().toISOString(),
+            uptime: this.deps.environment.getUptime(),
+            version: this.deps.environment.getVersion(),
             checks,
         };
-    }
-
-    private calculateOverallStatus(checks: HealthCheck[]): "healthy" | "unhealthy" | "degraded" {
-        if (checks.length === 0) {
-            return "healthy";
-        }
-
-        const hasUnhealthy = checks.some((check) => check.status === "unhealthy");
-        const hasDegraded = checks.some((check) => check.status === "degraded");
-
-        if (hasUnhealthy) {
-            return "unhealthy";
-        }
-
-        if (hasDegraded) {
-            return "degraded";
-        }
-
-        return "healthy";
     }
 }

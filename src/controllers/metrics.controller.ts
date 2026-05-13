@@ -1,84 +1,45 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { pool } from "../db/pool.js";
-import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import { HealthService } from "../services/health/health.service.js";
-import { metricsService } from "../services/metrics/metrics.service.js";
+import type { HealthServicePort, HealthStatus } from "../services/health/health.types.js";
+import type { MetricsGetMetricsPort } from "../services/metrics/metrics.types.js";
 import { AppError } from "../utils/errors.js";
 
 type ControllerMethod = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
-class MetricsController {
-    private readonly healthService = new HealthService();
+interface MetricsControllerDependencies {
+    healthService: HealthServicePort;
+    metricsService: MetricsGetMetricsPort;
+}
 
-    constructor() {
-        this.setupHealthChecks();
-    }
+export class MetricsController {
+    constructor(private readonly deps: MetricsControllerDependencies) {}
 
-    private setupHealthChecks(): void {
-        this.healthService.registerCheck("database", async () => {
-            try {
-                await pool.query("SELECT 1");
-                return {
-                    name: "database",
-                    status: "healthy" as const,
-                    message: "Database connection successful",
-                };
-            } catch (error) {
-                return {
-                    name: "database",
-                    status: "unhealthy" as const,
-                    message: error instanceof Error ? error.message : "Database connection failed",
-                };
-            }
-        });
-
-        this.healthService.registerCheck("subscriptions", async () => {
-            try {
-                const count = await subscriptionRepository.countActiveSubscriptions();
-                return {
-                    name: "subscriptions",
-                    status: "healthy" as const,
-                    message: `Active subscriptions: ${count}`,
-                    details: { count },
-                };
-            } catch {
-                return {
-                    name: "subscriptions",
-                    status: "degraded" as const,
-                    message: "Could not retrieve subscription count",
-                };
-            }
-        });
-    }
-
-    healthCheck: ControllerMethod = async (_req, res) => {
+    healthCheck: ControllerMethod = async (_req, res, next) => {
         try {
-            const healthData = await this.healthService.getHealth();
-            const status = healthData.status === "healthy" ? 200 : healthData.status === "degraded" ? 200 : 503;
+            const healthData = await this.deps.healthService.getHealth();
 
-            res.status(status).json(healthData);
-        } catch {
-            res.status(503).json({
-                status: "unhealthy",
-                timestamp: new Date().toISOString(),
-                uptime: process.uptime(),
-                version: process.env.npm_package_version ?? "1.0.0",
-                checks: [],
-                message: "Health check failed",
-            });
+            res.status(this.getHealthStatusCode(healthData.status)).json(healthData);
+        } catch (error) {
+            next(error);
         }
     };
 
-    metricsCheck: ControllerMethod = async (_req, res) => {
+    metricsCheck: ControllerMethod = async (_req, res, next) => {
         try {
-            const metrics = await metricsService.getMetrics();
+            const metrics = await this.deps.metricsService.getMetrics();
+
             res.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
             res.send(metrics);
         } catch {
-            throw AppError.internal("Failed to collect metrics");
+            next(AppError.internal("Failed to collect metrics"));
         }
     };
+
+    private getHealthStatusCode(status: HealthStatus): number {
+        return status === "unhealthy" ? 503 : 200;
+    }
 }
 
-export const metricsController = new MetricsController();
+export const createMetricsController = (deps: MetricsControllerDependencies): MetricsController => {
+    return new MetricsController(deps);
+};

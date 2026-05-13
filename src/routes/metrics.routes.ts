@@ -1,6 +1,12 @@
 import { Router } from "express";
 
-import { metricsController } from "../controllers/metrics.controller.js";
+import { createMetricsController } from "../controllers/metrics.controller.js";
+import { healthService, metricsService } from "../services/services.module.js";
+
+const metricsController = createMetricsController({
+    healthService,
+    metricsService,
+});
 
 const { healthCheck, metricsCheck } = metricsController;
 

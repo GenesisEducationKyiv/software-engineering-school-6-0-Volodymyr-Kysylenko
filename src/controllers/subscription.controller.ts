@@ -8,7 +8,7 @@ import type {
     ListSubscriptionsRequest,
     TokenParams,
 } from "../dto/subscription.dto.js";
-import { subscriptionService } from "../services/subscription/subscription.service.js";
+import { subscriptionService } from "../services/services.module.js";
 import { AppError } from "../utils/errors.js";
 
 type ControllerMethod = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;

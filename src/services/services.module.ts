@@ -1,6 +1,8 @@
 import { createClient } from "redis";
 
 import { env } from "../config/env.js";
+import { databaseHealthCheckAdapter } from "../db/adapters/database-health-check.adapter.js";
+import { subscriptionRepository } from "../repositories/subscription.repository.js";
 import { logger } from "../utils/logger/logger.js";
 import { createCacheModule } from "./cache/cache.module.js";
 import { RedisClientAdapter } from "./cache/cache.redis-client.js";
@@ -8,7 +10,25 @@ import type { CacheClientFactory, CacheConfig } from "./cache/cache.types.js";
 import { createEmailModule } from "./email/email.module.js";
 import { DefaultGitHubHttpClient } from "./github/github.http.js";
 import { createGithubModule } from "./github/github.module.js";
-import { metricsService } from "./metrics/metrics.service.js";
+import { createHealthModule } from "./health/health.module.js";
+import type { HealthEnvironmentPort } from "./health/health.types.js";
+import { createMetricsModule } from "./metrics/metrics.module.js";
+import { createScannerModule } from "./scanner/scanner.module.js";
+import { createSubscriptionModule } from "./subscription/subscription.module.js";
+
+const metricsModule = createMetricsModule({ logger, subscriptionRepository });
+
+const healthEnvironment: HealthEnvironmentPort = {
+    getNow: () => new Date(),
+    getUptime: () => process.uptime(),
+    getVersion: () => process.env.npm_package_version ?? "1.0.0",
+};
+
+const healthModule = createHealthModule({
+    databaseHealthCheck: databaseHealthCheckAdapter,
+    environment: healthEnvironment,
+    subscriptionRepository,
+});
 
 const emailModule = createEmailModule({
     config: {
@@ -29,7 +49,7 @@ const emailModule = createEmailModule({
         appBaseUrl: env.APP_BASE_URL,
     },
     logger,
-    metrics: metricsService,
+    metrics: metricsModule.metricsService,
 });
 
 const cacheConfig: CacheConfig = {
@@ -50,11 +70,29 @@ const githubModule = createGithubModule({
     httpClient: new DefaultGitHubHttpClient(env.GITHUB_API_TIMEOUT_MS, fetch),
     cache: cacheModule.cacheService,
     logger,
-    metrics: metricsService,
+    metrics: metricsModule.metricsService,
     githubToken: env.GITHUB_TOKEN,
+});
+
+const subscriptionModule = createSubscriptionModule({
+    emailService: emailModule.emailService,
+    githubService: githubModule.githubService,
+    subscriptionRepository,
+    logger,
+});
+
+const scannerModule = createScannerModule({
+    emailService: emailModule.emailService,
+    githubService: githubModule.githubService,
+    metricsService: metricsModule.metricsService,
+    subscriptionRepository,
 });
 
 export const emailService = emailModule.emailService;
 export const githubService = githubModule.githubService;
+export const healthService = healthModule.healthService;
+export const metricsService = metricsModule.metricsService;
+export const scannerService = scannerModule.scannerService;
+export const subscriptionService = subscriptionModule.subscriptionService;
 export const cacheService = cacheModule.cacheService;
 export const cacheLifecycle = cacheModule.cacheLifecycle;
