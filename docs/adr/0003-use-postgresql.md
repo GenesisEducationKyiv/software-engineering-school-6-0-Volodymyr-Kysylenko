@@ -8,13 +8,11 @@
 
 ## Context
 
-The system requires persistent storage for subscription records with clear relational semantics: uniqueness constraints across multiple columns, lifecycle state tracking, and soft deletes. A primary storage engine needed to be selected.
+The system requires persistent storage for subscription records with clear relational semantics: uniqueness constraints across multiple columns, lifecycle state tracking, and soft deletes. A primary storage engine and access strategy needed to be selected.
 
 ## Decision
 
-Use **PostgreSQL** as the primary relational database.
-
-Access PostgreSQL using raw parameterised SQL through the `pg` driver. No ORM is introduced, because the project requirements expect direct SQL usage.
+Use **PostgreSQL** as the primary relational database, accessed via raw parameterized SQL through the `pg` driver without an ORM.
 
 ## Consequences
 
@@ -22,41 +20,30 @@ Access PostgreSQL using raw parameterised SQL through the `pg` driver. No ORM is
 
 **Positive:**
 
-- Strong support for relational data modeling.
-- Reliable uniqueness, foreign key, and constraint enforcement at the database level.
-- Mature ecosystem and good support for production deployments.
-- Suitable for lifecycle state tracking and soft deletes.
+- The subscription domain maps naturally to a relational model. Uniqueness across `(email, repo_full_name)`, token lookups, and soft-delete lifecycle state are all cleanly enforced at the database level without application-side guards.
+- `pgcrypto`'s `gen_random_uuid()` generates version-4 UUIDs server-side, keeping ID generation consistent and avoiding application-side UUID libraries.
+- Mature support for partial indexes, which are used to optimize the scanner's confirmed active subscription query.
+- Well-understood operational characteristics and upgrade path if the data model grows.
 
 **Negative:**
 
 - Requires operating a separate database service.
 - Single-instance deployment provides no high availability or read-replica capabilities.
 - Production reliability depends on explicit backup, restore, and migration rollback procedures.
-- Vertical scaling is the primary near-term path; failover requires additional infrastructure not present in single-node mode.
 
 ### Raw SQL without ORM
 
 **Positive:**
 
-- Queries are explicit, auditable, and easy to connect with the educational goals of the project.
-- No hidden ORM-generated SQL.
-- Direct control over indexes, constraints, joins, and transactions.
+- Queries are explicit and auditable — indexes, constraints, and transactions are visible and intentional rather than inferred from ORM configuration.
+- No hidden query generation; performance characteristics are predictable.
 
 **Negative:**
 
-- More boilerplate than using an ORM.
+- More boilerplate than an ORM for straightforward CRUD.
 - Schema changes require explicit migration files.
-- Less automatic type mapping between database rows and TypeScript models.
-- Query correctness and performance tuning rely on review discipline, indexes, and observability rather than ORM safeguards.
+- Type mapping between database rows and TypeScript models is manual.
 
 ## Alternatives Considered
 
-### Database
-
-**SQLite** - rejected because the assignment explicitly required PostgreSQL as the primary database.
-
-### ORM
-
-**Prisma** - rejected because the assignment explicitly required raw SQL through the `pg` driver and did not allow ORM usage.
-
-**Drizzle** - rejected because the assignment explicitly required raw SQL through the `pg` driver and did not allow ORM usage.
+**SQLite** — sufficient for the current data volume, but lacks PostgreSQL's constraint model, partial indexes, and `pgcrypto`. The trade-off favors PostgreSQL given the subscription domain's relational requirements.

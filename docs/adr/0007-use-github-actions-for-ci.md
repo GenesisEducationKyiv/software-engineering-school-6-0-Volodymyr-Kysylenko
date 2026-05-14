@@ -56,4 +56,4 @@ The test job starts only after the quality job passes, ensuring broken builds do
 
 ## Alternatives Considered
 
-**CircleCI / GitLab CI** - rejected, does not meet project requirements.
+**CircleCI / GitLab CI** — capable platforms, but require separate accounts, additional configuration, and webhook setup for a repository already hosted on GitHub. GitHub Actions eliminates that friction: the pipeline definition lives in the same repository, triggers are native, and no external service needs to be authorized. The trade-off favors Actions given there is no existing investment in either alternative.

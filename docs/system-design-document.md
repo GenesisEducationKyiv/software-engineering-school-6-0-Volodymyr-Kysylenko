@@ -205,48 +205,53 @@ These constraints are acceptable for the current educational scope and expected 
 
 ## 4. High-Level Architecture
 
+### System Context (C4 Level 1)
+
 ```mermaid
-graph TD
-    subgraph Clients
-        Browser["Browser"]
-        RESTClient["REST Client"]
-        GRPCClient["gRPC Client"]
-    end
+C4Context
+    title System Context — GitHub Release Notifier
 
-    subgraph Edge
-        CF["Cloudflare"]
-        Nginx["Nginx Reverse Proxy"]
-    end
+    Person(subscriber, "Subscriber", "Manages subscriptions via browser, HTTP client, or gRPC client")
+    System_Ext(monitoring, "Monitoring System", "Scrapes Prometheus metrics")
 
-    App["Application Monolith"]
+    System(notifier, "GitHub Release Notifier", "Tracks GitHub repository releases and delivers email notifications to subscribers")
 
-    subgraph Data
-        PG["PostgreSQL"]
-        Redis["Redis Cache"]
-    end
+    System_Ext(github, "GitHub REST API", "Provides repository metadata and release information")
+    System_Ext(smtp, "SMTP Provider", "Delivers transactional emails to subscribers")
 
-    subgraph External
-        GitHub["GitHub REST API"]
-        SMTP["SMTP Server"]
-    end
+    Rel(subscriber, notifier, "Subscribe / confirm / unsubscribe", "HTTPS, gRPC")
+    Rel(notifier, github, "Validate repos, fetch releases", "HTTPS")
+    Rel(notifier, smtp, "Send confirmation and notification emails", "SMTP/TLS")
+    Rel(monitoring, notifier, "Scrape metrics", "HTTP /metrics")
+```
 
-    subgraph Observability
-        Prometheus["Prometheus"]
-    end
+### Containers (C4 Level 2)
 
-    Browser -->|HTTPS| CF
-    RESTClient -->|HTTPS| CF
-    GRPCClient -->|gRPC over HTTP/2| CF
+```mermaid
+C4Container
+    title Container Diagram — GitHub Release Notifier
 
-    CF -->|HTTPS| Nginx
-    Nginx -->|HTTP / gRPC| App
+    Person(subscriber, "Subscriber")
+    System_Ext(monitoring, "Monitoring System", "Scrapes Prometheus metrics")
+    System_Ext(github, "GitHub REST API")
+    System_Ext(smtp, "SMTP Provider")
+    System_Ext(cf, "Cloudflare", "CDN and DDoS protection")
 
-    App --> PG
-    App --> Redis
-    App --> GitHub
-    App --> SMTP
+    System_Boundary(vps, "VPS / Docker Compose") {
+        Container(nginx, "Nginx", "Reverse Proxy", "TLS termination, HTTP and gRPC routing")
+        Container(app, "Node.js App", "TypeScript, Express, gRPC", "REST API, gRPC API, background release scanner")
+        ContainerDb(pg, "PostgreSQL", "Relational Database", "Persists subscription records")
+        ContainerDb(redis, "Redis", "In-memory Cache", "Caches GitHub API responses with TTL")
+    }
 
-    Prometheus -->|scrape /metrics| App
+    Rel(subscriber, cf, "HTTPS / gRPC over HTTP/2")
+    Rel(cf, nginx, "HTTPS / gRPC over HTTP/2")
+    Rel(nginx, app, "HTTP :3000 / gRPC :50051")
+    Rel(app, pg, "Parameterized SQL", "TCP :5432")
+    Rel(app, redis, "Cache reads/writes", "TCP :6379")
+    Rel(app, github, "REST calls", "HTTPS")
+    Rel(app, smtp, "Send emails", "SMTP/TLS")
+    Rel(monitoring, app, "Scrape /metrics", "HTTP")
 ```
 
 ---
@@ -302,92 +307,45 @@ Redis is optional – the system degrades gracefully to direct API calls when Re
 
 ## 6. Main Components
 
-### 6.1 Express Application (`src/app.ts`)
+### 6.1 HTTP Layer (`src/app.ts`)
 
-The Express application is constructed in a factory function (`createApp`) to facilitate testing. It registers:
-
-- Security middleware: `helmet` (HTTP security headers), `express-rate-limit` (request throttling).
-- Request middleware: request ID injection, structured request logging.
-- Origin validation middleware (allowlist-based CORS guard).
-- Body parsing with a configurable size limit (`BODY_LIMIT`).
-- Subscription API router (`/api`).
-- HTML page router.
-- Metrics router (`/api/metrics`).
-- Health router (`/api/health`).
-- Swagger UI (`/swagger`).
+Owns the HTTP surface of the application. It is the only place where cross-cutting concerns — security headers, rate limiting, request identity, origin validation, and body parsing — are wired together, keeping that configuration out of business logic. The application is constructed via a factory function so the same setup can be instantiated in tests without a running server.
 
 ### 6.2 gRPC Server (`src/grpc/server.ts`)
 
-A standalone gRPC server bootstrapped alongside Express on a separate port (`GRPC_PORT`, default `50051`). The server loads the `subscription.proto` schema at startup via `@grpc/proto-loader` and registers the `SubscriptionService` handlers. It runs on `0.0.0.0` with insecure credentials, TLS termination is handled at the infrastructure layer by Nginx.
+Owns the binary-protocol surface of the application. It exists as a separate bootstrap unit because gRPC and HTTP/1.1 require different transport stacks and run on different ports. Its responsibility is to translate incoming Protobuf messages into the same domain calls the REST controllers make; no business logic lives here.
 
 ### 6.3 Subscription Service (`src/services/subscription.service.ts`)
 
-Orchestrates all subscription lifecycle operations:
-
-- **Subscribe:** validates that the repository exists on GitHub (with cache), checks for a duplicate subscription, creates the record with a cryptographically secure confirm token and unsubscribe token, and dispatches a confirmation email.
-- **Confirm:** marks the subscription as confirmed and sets `confirmed_at`.
-- **Unsubscribe:** sets `unsubscribed_at`, logically deleting the subscription.
-- **List:** returns confirmed, active subscriptions **by email**.
+The central domain orchestrator and the single module that knows the full lifecycle of a subscription — from initial creation through email confirmation to active monitoring and eventual unsubscription. All API entry points (REST and gRPC) delegate to it, ensuring business rules are enforced in one place regardless of transport.
 
 ### 6.4 GitHub Service (`src/services/github.service.ts`)
 
-Encapsulates all GitHub REST API interactions:
-
-- `assertRepositoryExists` – verifies a repository is public and accessible before allowing a subscription.
-- `getLatestRelease` – fetches the most recent published release for a repository.
+Isolates all coupling to the GitHub REST API. No other component holds an HTTP client or knows GitHub's response shape. This boundary makes it straightforward to stub the upstream in tests or extend it with webhook support without touching subscription or scanner logic.
 
 ### 6.5 Cache Service (`src/services/cache.service.ts`)
 
-Wraps the `redis` client with a safe interface. If Redis is unreachable or disabled, all cache operations return `null` and execution continues normally.
+Abstracts the Redis client behind a null-safe interface and makes Redis genuinely optional: if the connection is unavailable or disabled, callers receive a cache miss and continue without error. Centralizing this behavior here prevents Redis-specific error handling from leaking into the GitHub service or scanner.
 
 ### 6.6 Scanner Service (`src/services/scanner.service.ts`)
 
-A background job that executes on a configurable interval:
-
-1. Acquires an in-process mutex (`ScannerLock`) to prevent overlapping runs.
-2. Queries all confirmed, active subscriptions.
-3. Groups subscriptions to minimize GitHub API calls (one call per repository regardless of subscriber count).
-4. Fetches the latest release for each repository.
-5. Identifies stale subscriptions.
-6. Sends a release notification email for each stale subscriber.
+Owns the background polling loop. It exists as a separate module because its execution model — periodic, stateful, I/O-intensive — is fundamentally different from request-driven logic. It also holds the in-process mutex that prevents overlapping scan cycles; isolating that coordination concern here keeps it from affecting request-path code.
 
 ### 6.7 Email Service (`src/services/email.service.ts`)
 
-Wraps `nodemailer` with:
-
-- A retry loop with exponential back-off.
-- Configurable SMTP connection, greeting, and socket timeouts.
-- Two email templates: **confirmation** and **release notification**.
+Encapsulates all SMTP coupling, retry mechanics, and email templating. Callers (the subscription service and scanner) invoke named operations such as "send confirmation" or "send notification" without any knowledge of the underlying transport, retry strategy, or template rendering.
 
 ### 6.8 Metrics Service (`src/services/metrics.service.ts`)
 
-Manages a dedicated `prom-client` registry with the following instruments:
-
-| Metric                                 | Type    | Description                                       |
-| -------------------------------------- | ------- | ------------------------------------------------- |
-| `github_notifier_active_subscriptions` | Gauge   | Current count of active subscriptions             |
-| `github_notifier_api_calls_total`      | Counter | GitHub API calls, labelled by `status` and `type` |
-| `github_notifier_emails_sent_total`    | Counter | Emails dispatched, labelled by `status`           |
-| `github_notifier_scanner_runs_total`   | Counter | Scanner cycles, labelled by `status`              |
-
-Default Node.js process metrics (event loop lag, heap usage, GC duration) are also collected.
+Owns the Prometheus instrumentation registry. Isolating it ensures metric registration and exposition logic does not scatter across services and that the `/metrics` endpoint always reflects a consistent, deduplicated registry. Custom counters and gauges track subscriptions, GitHub API calls, emails, and scanner cycles; default Node.js process metrics are also collected.
 
 ### 6.9 Health Service (`src/services/health.service.ts`)
 
-Performs periodic liveness checks against the PostgreSQL pool and Redis client, and exposes the result via `GET /api/health`. The Docker Compose `healthcheck` directive polls this endpoint to determine container readiness.
+Provides the single authoritative answer to "is the application ready to serve traffic?" by aggregating dependency checks (PostgreSQL, Redis) into one endpoint. Docker Compose's `healthcheck` directive uses this endpoint to gate container restarts and enforce startup ordering.
 
 ### 6.10 Repository Layer (`src/repositories/subscription.repository.ts`)
 
-Implements database access via parameterised queries against the PostgreSQL connection pool. There is no ORM – raw SQL is used for full query visibility and control. The repository provides:
-
-- `create` – insert a new subscription record.
-- `findByToken` – lookup by confirm or unsubscribe token.
-- `confirm` – set `confirmed = true`, `confirmed_at = NOW()`.
-- `unsubscribe` – set `unsubscribed_at = NOW()`.
-- `listByEmail` – list confirmed active subscriptions for an email.
-- `listConfirmedActive` – full scan for the background scanner.
-- `updateLastSeenTagByRepo` – batch update `last_seen_tag` after a scan cycle.
-- `countActiveSubscriptions` – for metrics initialization.
+Owns all database access and is the only module that constructs SQL. Its boundary ensures no service or controller holds a database connection or builds a query directly. Raw parameterized SQL is used in place of an ORM for full query visibility; this module is where that trade-off is localized.
 
 ---
 
@@ -670,7 +628,7 @@ An origin middleware layer validates the `Origin` header of incoming requests ag
 
 ### Token Security
 
-- Confirm and unsubscribe tokens are generated with `crypto.randomBytes`.
+- Confirm and unsubscribe tokens are generated with `crypto.randomBytes(24)`, producing a 48-character hex string.
 
 ### Secrets Management
 
@@ -859,14 +817,16 @@ flowchart TB
 
 ## 17. Testing Strategy
 
-**Vitest** is used for all automated test.
+**Vitest** is used for all automated tests, with coverage collected via the V8 provider.
 
-| Test Type         | Location                     | Description                                                 |
-| ----------------- | ---------------------------- | ----------------------------------------------------------- |
-| Unit tests        | `src/__tests__/*.test.ts`    | Isolated service and utility tests with mocked dependencies |
-| Integration tests | `src/__tests__/integration/` | Tests against a real PostgreSQL and Redis instance          |
+| Test Type         | Location                     | Scope                                                                                                                                         |
+| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit tests        | `src/__tests__/*.test.ts`    | Pure logic: Zod schemas, input validators, scanner grouping and notification eligibility, gRPC validation helpers, cache and metrics services |
+| Integration tests | `src/__tests__/integration/` | Full HTTP stack against real PostgreSQL and Redis: subscription lifecycle, conflict handling, health check, rate limiting                     |
 
-**Coverage** is collected via Vitest's built-in V8 provider and reported as HTML in the `coverage/` directory.
+Integration tests truncate the `subscriptions` table before each run. Redis is optional — cache-dependent assertions are skipped when `CACHE_ENABLED=false`. SMTP is not exercised in integration tests.
+
+Infrastructure bootstrap files, generated gRPC types, migrations, and config entry points are excluded from coverage.
 
 ---
 

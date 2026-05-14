@@ -33,4 +33,8 @@ Use **Docker Compose** to build and orchestrate all services.
 
 ## Alternatives Considered
 
-**Kubernetes** - rejected, operational overhead is disproportionate for a single-developer educational project on a minimal VPS.
+**Systemd units with bare Node.js** — the lightest option: no container runtime, direct process management, and fast restarts. Rejected because it requires managing PostgreSQL and Redis as separate host-level services with no isolation, environment parity between local and production is harder to maintain, and dependency health checks and startup ordering must be scripted manually.
+
+**`docker run` with systemd** — adds container isolation without Compose. Rejected because networking, environment injection, resource limits, and startup ordering across three containers require manual scripting that Compose handles declaratively.
+
+**Kubernetes** — provides cluster-level orchestration, rolling updates, and self-healing. Rejected because operational overhead is disproportionate for a single-developer project on a minimal VPS with no multi-node requirements.
