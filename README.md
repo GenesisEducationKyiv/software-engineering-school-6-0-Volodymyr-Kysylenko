@@ -214,7 +214,10 @@ pnpm run migrate          # Виконати міграції (development)
 pnpm run migrate:prod     # Виконати міграції (production)
 
 # Тести
-pnpm test                 # Запуск всіх тестів
+pnpm run test:unit         # Unit
+pnpm run test:integration  # Integration
+pnpm run test:e2e          # E2E
+pnpm run test:all          # Усі
 
 # Лінтинг
 pnpm run lint             # Перевірка коду
