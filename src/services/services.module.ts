@@ -22,11 +22,15 @@ const smtpClient = new SmtpEmailClient({
     timeoutMs: env.EMAIL_TIMEOUT_MS,
 });
 
-const retryingEmailClient = new RetryingEmailClient(smtpClient, {
-    attempts: env.EMAIL_RETRY_ATTEMPTS,
-    baseDelayMs: env.EMAIL_RETRY_BASE_DELAY_MS,
-    maxDelayMs: env.EMAIL_RETRY_MAX_DELAY_MS,
-});
+const retryingEmailClient = new RetryingEmailClient(
+    smtpClient,
+    {
+        attempts: env.EMAIL_RETRY_ATTEMPTS,
+        baseDelayMs: env.EMAIL_RETRY_BASE_DELAY_MS,
+        maxDelayMs: env.EMAIL_RETRY_MAX_DELAY_MS,
+    },
+    logger,
+);
 
 const linkBuilder = new AppEmailLinkBuilder({
     appBaseUrl: env.APP_BASE_URL,
@@ -70,3 +74,4 @@ const githubModule = createGithubModule({
 export const emailService = emailModule.emailService;
 export const githubService = githubModule.githubService;
 export const cacheService = cacheModule.cacheService;
+export const cacheLifecycle = cacheModule.cacheLifecycle;

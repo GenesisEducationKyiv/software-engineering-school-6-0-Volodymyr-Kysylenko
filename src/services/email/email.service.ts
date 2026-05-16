@@ -1,6 +1,7 @@
 import type {
     EmailClient,
     EmailConfirmationInput,
+    EmailMessage,
     EmailMetrics,
     EmailNewReleaseInput,
     EmailServicePort,
@@ -28,7 +29,7 @@ export class EmailService implements EmailServicePort {
         await this.sendTracked(message);
     }
 
-    private async sendTracked(message: Parameters<EmailClient["send"]>[0]): Promise<void> {
+    private async sendTracked(message: EmailMessage): Promise<void> {
         try {
             await this.emailClient.send(message);
             this.metrics.recordEmailSent("success");

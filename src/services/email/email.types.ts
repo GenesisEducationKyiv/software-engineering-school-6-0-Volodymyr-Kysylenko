@@ -1,4 +1,8 @@
+import type { LoggerPort } from "../../utils/logger/logger.types.js";
+
 type EmailSendStatus = "success" | "error";
+
+export type EmailRetryLoggerPort = Pick<LoggerPort, "warn">;
 
 export interface EmailMessage {
     from: string;

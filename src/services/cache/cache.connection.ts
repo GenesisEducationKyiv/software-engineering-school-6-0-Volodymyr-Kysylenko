@@ -30,11 +30,12 @@ export class RedisCacheConnection implements CacheStorePort, CacheLifecyclePort 
             this.deps.logger.error("Failed to connect to cache:", error);
             this.client = null;
             this.connected = false;
+            throw error;
         }
     }
 
     async disconnect(): Promise<void> {
-        if (this.client && this.connected) {
+        if (this.isConnected() && this.client) {
             await this.client.disconnect();
             this.client = null;
             this.connected = false;

@@ -55,7 +55,7 @@ export class EmailTemplateBuilder implements EmailTemplatePort {
                 `Браузер: ${links.unsubscribePageUrl}`,
                 `API: ${links.unsubscribeApiUrl}`,
             ]
-                .filter(Boolean)
+                .filter((line) => line !== "")
                 .join("\n"),
         };
     }

@@ -2,19 +2,19 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "../config/env.js";
 import { buildCacheKey } from "../services/cache/cache.keys.js";
-import { cacheService } from "../services/services.module.js";
+import { cacheLifecycle, cacheService } from "../services/services.module.js";
 
 describe("Cache Service", () => {
     beforeAll(async () => {
         if (env.CACHE_ENABLED) {
-            await cacheService.connect();
+            await cacheLifecycle.connect();
         }
     });
 
     afterAll(async () => {
-        if (env.CACHE_ENABLED && cacheService.isConnected()) {
+        if (env.CACHE_ENABLED && cacheLifecycle.isConnected()) {
             await cacheService.flush();
-            await cacheService.disconnect();
+            await cacheLifecycle.disconnect();
         }
     });
 

@@ -1,14 +1,11 @@
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
 
 export interface CacheServicePort {
-    connect(): Promise<void>;
-    disconnect(): Promise<void>;
     getEntry<T>(key: string): Promise<CacheEntry<T>>;
     get<T>(key: string): Promise<T | null>;
     set(key: string, value: unknown, ttlSeconds?: number): Promise<void>;
     del(key: string): Promise<void>;
     flush(): Promise<void>;
-    isConnected(): boolean;
 }
 
 export type CacheEntry<T> = { hit: true; value: T } | { hit: false; value: null };
@@ -50,7 +47,7 @@ export interface CacheClientPort {
 export type CacheClientFactory = (url: string) => CacheClientPort;
 
 export interface CacheServiceDependencies {
-    config: Pick<CacheConfig, "enabled" | "defaultTtlSeconds">;
+    config: Pick<CacheConfig, "defaultTtlSeconds">;
     logger: LoggerPort;
     store: CacheStorePort & CacheLifecyclePort;
     serializer: CacheSerializerPort;
