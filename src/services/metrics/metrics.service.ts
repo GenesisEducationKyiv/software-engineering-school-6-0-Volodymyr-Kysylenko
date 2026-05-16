@@ -1,7 +1,7 @@
 import promClient from "prom-client";
 
-import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import { logger } from "../utils/logger.js";
+import { subscriptionRepository } from "../../repositories/subscription.repository.js";
+import { logger } from "../../utils/logger/logger.js";
 
 class MetricsService {
     private readonly registry: promClient.Registry;

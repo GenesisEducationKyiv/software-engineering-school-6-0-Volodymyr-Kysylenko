@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { env } from "../config/env.js";
-import { CacheService, cacheService } from "../services/cache.service.js";
+import { CacheService, cacheService } from "../services/cache/cache.service.js";
 
 describe("Cache Service", () => {
     beforeAll(async () => {

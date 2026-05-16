@@ -2,8 +2,8 @@ import type { NextFunction, Request, Response } from "express";
 
 import { pool } from "../db/pool.js";
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import { HealthService } from "../services/health.service.js";
-import { metricsService } from "../services/metrics.service.js";
+import { HealthService } from "../services/health/health.service.js";
+import { metricsService } from "../services/metrics/metrics.service.js";
 import { AppError } from "../utils/errors.js";
 
 type ControllerMethod = (req: Request, res: Response, next: NextFunction) => Promise<void>;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { groupSubscriptionsByRepo, shouldNotifyForTag } from "../services/scanner.logic.js";
+import { groupSubscriptionsByRepo, shouldNotifyForTag } from "../services/scanner/scanner.logic.js";
 import type { SubscriptionRecord } from "../types/subscription.js";
 
 function makeSubscription(overrides: Partial<SubscriptionRecord> = {}): SubscriptionRecord {

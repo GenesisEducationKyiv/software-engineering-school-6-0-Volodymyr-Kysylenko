@@ -1,8 +1,8 @@
-import { env } from "../config/env.js";
-import { AppError } from "../utils/errors.js";
-import { logger } from "../utils/logger.js";
-import { CacheService, cacheService } from "./cache.service.js";
-import { metricsService } from "./metrics.service.js";
+import { env } from "../../config/env.js";
+import { AppError } from "../../utils/errors.js";
+import { logger } from "../../utils/logger/logger.js";
+import { CacheService, cacheService } from "../cache/cache.service.js";
+import { metricsService } from "../metrics/metrics.service.js";
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
 

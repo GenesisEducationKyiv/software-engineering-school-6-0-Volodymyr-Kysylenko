@@ -1,7 +1,7 @@
-import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import { emailService } from "./email.service.js";
-import { githubService } from "./github.service.js";
-import { metricsService } from "./metrics.service.js";
+import { subscriptionRepository } from "../../repositories/subscription.repository.js";
+import { emailService } from "../email/email.service.js";
+import { githubService } from "../github/github.service.js";
+import { metricsService } from "../metrics/metrics.service.js";
 import { groupSubscriptionsByRepo, shouldNotifyForTag } from "./scanner.logic.js";
 
 class ScannerLock {

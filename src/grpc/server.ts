@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
-import { logger } from "../utils/logger.js";
+import { logger } from "../utils/logger/logger.js";
 import type { ProtoGrpcType } from "./generated/subscription.js";
 import { subscriptionHandlers } from "./subscription.handlers.js";
 
