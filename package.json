@@ -22,18 +22,17 @@
         "test:env:up": "docker compose -f docker-compose.test.yml up -d --wait",
         "test:env:down": "docker compose -f docker-compose.test.yml down",
         "test:unit": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run",
-        "test:unit:coverage": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run --coverage",
+        "test:unit:coverage": "pnpm run test:unit --coverage",
         "test:integration": "node scripts/run-in-test-env.mjs \"pnpm run test:integration:run\"",
         "test:integration:run": "dotenv -e .env.integration -- cross-env NODE_ENV=test vitest run --config vitest.integration.config.ts",
-        "test:integration:coverage": "node scripts/run-in-test-env.mjs \"dotenv -e .env.integration -- cross-env NODE_ENV=test vitest run --coverage --config vitest.integration.config.ts\"",
+        "test:integration:coverage": "node scripts/run-in-test-env.mjs \"pnpm run test:integration:run -- --coverage\"",
         "test:e2e:install": "playwright install",
         "test:e2e": "node scripts/run-in-test-env.mjs \"pnpm run test:e2e:run\" \"pnpm exec playwright install --with-deps chromium\"",
         "test:e2e:run": "playwright test",
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:report": "playwright show-report",
         "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e",
-        "test:ci": "dotenv -e .env.test.ci -- cross-env NODE_ENV=test vitest run",
-        "test:local": "dotenv -e .env.local -- cross-env NODE_ENV=test vitest run --exclude src/__tests__/e2e/**"
+        "test:ci": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run"
     },
     "lint-staged": {
         "*.{ts,js,json,md,yml,yaml}": [

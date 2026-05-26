@@ -11,16 +11,28 @@ const run = (cmd) => execSync(cmd, { stdio: "inherit" });
 
 try {
     run("pnpm run test:env:down");
-} catch {}
+} catch (e) {
+    console.warn("test:env:down on startup failed (ignored):", e.message ?? e);
+}
 
 run("pnpm run test:env:up");
 
 let failed = false;
 try {
     if (preCommand) {
-        run(preCommand);
+        try {
+            run(preCommand);
+        } catch (e) {
+            console.error(`preCommand failed: ${preCommand}\n`, e.message ?? e);
+            throw e;
+        }
     }
-    run(testCommand);
+    try {
+        run(testCommand);
+    } catch (e) {
+        console.error(`testCommand failed: ${testCommand}\n`, e.message ?? e);
+        throw e;
+    }
 } catch {
     failed = true;
 } finally {
