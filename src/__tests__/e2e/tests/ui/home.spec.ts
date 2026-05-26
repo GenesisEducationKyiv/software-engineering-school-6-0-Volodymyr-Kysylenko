@@ -1,7 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const TEST_REPO = "facebook/react";
-const uniqueEmail = () => `ui-home-${Date.now()}-${Math.floor(Math.random() * 9999)}@example.com`;
+import { TEST_REPO, uniqueEmail } from "../../helpers/constants.js";
 
 test.describe("Home page — subscription form", () => {
     const disableNativeValidation = async (page: Page) => {
@@ -69,7 +68,7 @@ test.describe("Home page — subscription form", () => {
         const message = page.locator("#message");
         await expect(message).toHaveText(
             "Підписку створено. Перевірте email і підтвердьте її через посилання в листі.",
-            { timeout: 15_000 },
+            { timeout: 3_000 },
         );
         await expect(message).toHaveClass(/message--success/);
         await expect(page.locator("#email")).toHaveValue("");
@@ -106,7 +105,7 @@ test.describe("Home page — subscription form", () => {
         await page.locator("#email").fill(email);
         await page.locator("#repo").fill(TEST_REPO);
         await page.locator("#submit-button").click();
-        await expect(page.locator("#message")).toHaveClass(/message--success/, { timeout: 15_000 });
+        await expect(page.locator("#message")).toHaveClass(/message--success/, { timeout: 3_000 });
 
         // Second subscription, same email and repo
         await page.locator("#email").fill(email);
@@ -132,7 +131,7 @@ test.describe("Home page — subscription form", () => {
         await page.locator("#submit-button").click();
 
         const message = page.locator("#message");
-        await expect(message).toHaveText("Репозиторій не знайдено на GitHub.", { timeout: 15_000 });
+        await expect(message).toHaveText("Репозиторій не знайдено на GitHub.", { timeout: 3_000 });
         await expect(message).toHaveClass(/message--error/);
     });
 

@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_REPO, uniqueEmail } from "../../helpers/constants.js";
 import { createSubscription } from "../../helpers/db.js";
-
-const TEST_REPO = "facebook/react";
-
-const uniqueEmail = () => `subs-${Date.now()}-${Math.floor(Math.random() * 9999)}@example.com`;
 
 test.describe("GET /api/subscriptions", () => {
     test("returns 200 with empty array for email with no subscriptions", async ({ request }) => {
@@ -65,8 +62,17 @@ test.describe("GET /api/subscriptions", () => {
             unsubscribed: true,
         });
 
-        const listBefore = await request.get(`/api/subscriptions?email=${encodeURIComponent(email)}`);
-        const before = await listBefore.json();
-        expect(before).toHaveLength(0);
+        await createSubscription({
+            email,
+            repo: "microsoft/vscode",
+            confirmed: true,
+            unsubscribed: false,
+        });
+
+        const response = await request.get(`/api/subscriptions?email=${encodeURIComponent(email)}`);
+        const body = await response.json();
+
+        expect(body).toHaveLength(1);
+        expect(body[0]).toHaveProperty("repo", "microsoft/vscode");
     });
 });

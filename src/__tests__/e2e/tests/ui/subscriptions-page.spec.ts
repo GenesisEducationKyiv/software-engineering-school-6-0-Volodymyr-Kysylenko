@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
+import { TEST_REPO, uniqueEmail } from "../../helpers/constants.js";
+
 const ORIGIN = process.env.APP_BASE_URL ?? "http://localhost:3001";
-const TEST_REPO = "facebook/react";
-const uniqueEmail = () => `ui-subs-${Date.now()}-${Math.floor(Math.random() * 9999)}@example.com`;
 
 test.describe("Subscriptions page", () => {
     const disableNativeValidation = async (page: Page) => {

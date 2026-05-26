@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_REPO, uniqueEmail } from "../../helpers/constants.js";
 import { createSubscription } from "../../helpers/db.js";
-
-const TEST_REPO = "facebook/react";
-
-const uniqueEmail = () => `flow-${Date.now()}-${Math.floor(Math.random() * 9999)}@example.com`;
 
 test.describe("Full subscription lifecycle", () => {
     test("confirm → list (confirmed) → unsubscribe → list (empty)", async ({ request }) => {

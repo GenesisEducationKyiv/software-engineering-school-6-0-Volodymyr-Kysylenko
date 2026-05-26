@@ -1,11 +1,10 @@
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-const ORIGIN = process.env.APP_BASE_URL ?? "http://localhost:3001";
-const TEST_REPO = "facebook/react";
-const FAKE_REPO = "this-user-does-not-exist-playwright-e2e/this-repo-does-not-exist-playwright-e2e";
+import { TEST_REPO, uniqueEmail } from "../../helpers/constants.js";
 
-const uniqueEmail = () => `e2e-${Date.now()}-${Math.floor(Math.random() * 9999)}@example.com`;
+const ORIGIN = process.env.APP_BASE_URL ?? "http://localhost:3001";
+const FAKE_REPO = "this-user-does-not-exist-playwright-e2e/this-repo-does-not-exist-playwright-e2e";
 
 const subscribe = async (request: APIRequestContext, email: string, repo: string) =>
     request.post("/api/subscribe", {

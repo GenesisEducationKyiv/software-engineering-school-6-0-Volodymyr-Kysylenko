@@ -16,9 +16,4 @@ test.describe("GET /api/metrics", () => {
 
         expect(body).toMatch(/^# (HELP|TYPE) /m);
     });
-
-    test("does not require Origin header (GET method)", async ({ request }) => {
-        const response = await request.get("/api/metrics");
-        expect(response.status()).toBe(200);
-    });
 });
