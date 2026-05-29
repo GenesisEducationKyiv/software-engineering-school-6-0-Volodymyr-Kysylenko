@@ -1,10 +1,24 @@
+import type promClient from "prom-client";
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
 
+export type OperationStatus = "success" | "error";
+export type GithubApiCallType = "releases" | "rate_limit" | "other";
+export type EmailSendType = "confirmation" | "release";
+
 export interface MetricsRecorderPort {
-    recordGithubApiCall(status: "success" | "error", type: "releases" | "rate_limit" | "other"): void;
-    recordEmailSent(status: "success" | "error"): void;
-    recordScannerRun(status: "success" | "error"): void;
+    recordGithubApiCall(status: OperationStatus, type: GithubApiCallType): void;
+    recordGithubApiDuration(type: GithubApiCallType, durationSeconds: number): void;
+    recordEmailSent(status: OperationStatus): void;
+    recordEmailDuration(type: EmailSendType, durationSeconds: number): void;
+    recordScannerRun(status: OperationStatus): void;
+    recordScannerRunDuration(durationSeconds: number): void;
     updateActiveSubscriptions(count: number): void;
+}
+
+export interface MetricsHttpPort {
+    recordHttpRequest(method: string, route: string, statusCode: string, durationSeconds: number): void;
+    incrementHttpInFlight(method: string): void;
+    decrementHttpInFlight(method: string): void;
 }
 
 export interface MetricsGetMetricsPort {
@@ -32,8 +46,20 @@ export interface PrometheusRecorderPort {
     updateActiveSubscriptions(count: number): void;
 }
 
-export interface MetricsInitializerPort {
-    initialize(): Promise<void>;
+export interface MetricsServicePort
+    extends MetricsRecorderPort, MetricsHttpPort, MetricsGetterPort, MetricsProviderPort {}
+export interface PrometheusMetricsSet {
+    registry: promClient.Registry;
+    activeSubscriptions: promClient.Gauge;
+    githubApiCalls: promClient.Counter<string>;
+    githubApiCallDuration: promClient.Histogram<string>;
+    emailsSent: promClient.Counter<string>;
+    emailDuration: promClient.Histogram<string>;
+    scannerRuns: promClient.Counter<string>;
+    scannerRunDuration: promClient.Histogram<string>;
+    httpRequestsTotal: promClient.Counter<string>;
+    httpRequestDuration: promClient.Histogram<string>;
+    httpRequestsInFlight: promClient.Gauge<string>;
 }
 
 export interface MetricsContentPort {

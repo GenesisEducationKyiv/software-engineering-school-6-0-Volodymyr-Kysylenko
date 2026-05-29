@@ -28,6 +28,7 @@
 - Docker
 - Redis
 - Winston (структуроване логування)
+- Prometheus + Grafana (метрики)
 - Elasticsearch + Kibana + Filebeat (ELK-стек)
 
 ## Що реалізовано
@@ -53,6 +54,11 @@
 - деплой на VPS (Ubuntu + Nginx як reverse proxy)
 - структуроване JSON-логування через Winston з полями `service`, `version`, `environment`, `context`, `hostname`
 - конвеєр логів: Filebeat → Elasticsearch → Kibana (опціональний профіль `elk`)
+- інструментація за методологією RED (Rate, Errors, Duration) через prom-client
+- HTTP-middleware для автоматичного збору метрик усіх запитів
+- duration-гістограми для GitHub API, email та scanner
+- конвеєр експорту метрик до Prometheus (scrape кожні 15 с)
+- Grafana з авто-provisioned datasource та dashboard (11 панелей RED)
 
 ## Структура
 
@@ -247,6 +253,17 @@ make health               # curl http://localhost:3000/api/health
 # Бекап DB
 make backup
 ```
+
+## Моніторинг (Prometheus + Grafana)
+
+```bash
+make monitoring-up   # Prometheus :9090 + Grafana :3001 (admin / admin)
+make monitoring-down
+```
+
+Після запуску відкрити **http://localhost:3001** — dashboard з панелями HTTP Rate/Errors/Duration, GitHub API, Email, Scanner та Active Subscriptions завантажується автоматично. Детальний опис метрик: [METRICS.md](METRICS.md).
+
+---
 
 ## ELK-стек (логування)
 

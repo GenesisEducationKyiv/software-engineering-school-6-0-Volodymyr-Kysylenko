@@ -16,12 +16,14 @@ import YAML from "yaml";
 // config
 import { env } from "./config/env.js";
 import { createErrorHandler } from "./middleware/error-handler.js";
+import { createHttpMetricsMiddleware } from "./middleware/http-metrics.middleware.js";
 // middleware
 import { validateOrigin } from "./middleware/origin.middleware.js";
 import { createRequestLoggerMiddleware, requestIdMiddleware } from "./middleware/request.middleware.js";
 import { metricsRouter } from "./routes/metrics.routes.js";
 // routes
 import { subscriptionPagesRouter, subscriptionRouter } from "./routes/subscription.routes.js";
+import { metricsService } from "./services/services.module.js";
 // utils
 import { AppError } from "./utils/errors.js";
 import { logger } from "./utils/logger/logger.js";
@@ -59,6 +61,9 @@ export function createApp() {
 
     // secured headers
     app.use(helmet());
+
+    // HTTP RED metrics
+    app.use(createHttpMetricsMiddleware(metricsService));
 
     // origin validation for all routes
     app.use(validateOrigin);

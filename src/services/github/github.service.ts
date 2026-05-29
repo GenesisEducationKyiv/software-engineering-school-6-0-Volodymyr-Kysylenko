@@ -1,4 +1,5 @@
 import { AppError } from "../../utils/errors.js";
+import { elapsedSeconds } from "../../utils/hrtime.js";
 import { buildCacheKey } from "../cache/cache.keys.js";
 import type { GithubRelease, GithubRepoCheck, GitHubServiceDependencies, GitHubServicePort } from "./github.types.js";
 
@@ -43,12 +44,16 @@ export class GitHubService implements GitHubServicePort {
             return;
         }
 
-        const response = await this.deps.httpClient.fetchWithTimeout(
-            `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}`,
-            {
-                headers: this.buildHeaders(),
-            },
-        );
+        const t0 = process.hrtime.bigint();
+        let response!: Response;
+        try {
+            response = await this.deps.httpClient.fetchWithTimeout(
+                `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}`,
+                { headers: this.buildHeaders() },
+            );
+        } finally {
+            this.deps.metrics.recordGithubApiDuration("other", elapsedSeconds(t0));
+        }
 
         this.deps.metrics.recordGithubApiCall(response.ok ? "success" : "error", "other");
 
@@ -85,12 +90,16 @@ export class GitHubService implements GitHubServicePort {
             return cached.value;
         }
 
-        const response = await this.deps.httpClient.fetchWithTimeout(
-            `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}/releases/latest`,
-            {
-                headers: this.buildHeaders(),
-            },
-        );
+        const t0 = process.hrtime.bigint();
+        let response!: Response;
+        try {
+            response = await this.deps.httpClient.fetchWithTimeout(
+                `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}/releases/latest`,
+                { headers: this.buildHeaders() },
+            );
+        } finally {
+            this.deps.metrics.recordGithubApiDuration("releases", elapsedSeconds(t0));
+        }
 
         this.deps.metrics.recordGithubApiCall(response.ok ? "success" : "error", "releases");
 

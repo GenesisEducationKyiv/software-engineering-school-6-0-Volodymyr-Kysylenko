@@ -113,6 +113,73 @@ services:
                 max-size: "5m"
                 max-file: "3"
 
+    prometheus:
+        image: prom/prometheus:v2.54.1
+        profiles: ["monitoring"]
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=15d"
+            - "--web.enable-lifecycle"
+        ports:
+            - "127.0.0.1:9090:9090"
+        volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - prometheus_data:/prometheus
+        depends_on:
+            app:
+                condition: service_healthy
+        restart: unless-stopped
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 256M
+                reservations:
+                    cpus: "0.1"
+                    memory: 64M
+        networks:
+            - app-network
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "5m"
+                max-file: "3"
+
+    grafana:
+        image: grafana/grafana:11.3.1
+        profiles: ["monitoring"]
+        ports:
+            - "127.0.0.1:3001:3000"
+        environment:
+            - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+            - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+            - GF_USERS_ALLOW_SIGN_UP=false
+            - GF_AUTH_ANONYMOUS_ENABLED=false
+            - GF_LOG_LEVEL=warn
+        volumes:
+            - ./grafana/provisioning:/etc/grafana/provisioning:ro
+            - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+            - grafana_data:/var/lib/grafana
+        depends_on:
+            - prometheus
+        restart: unless-stopped
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 256M
+                reservations:
+                    cpus: "0.1"
+                    memory: 64M
+        networks:
+            - app-network
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "5m"
+                max-file: "3"
+
     elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
         profiles: ["elk"]
@@ -227,6 +294,10 @@ volumes:
     postgres_data:
         driver: local
     redis_data:
+        driver: local
+    prometheus_data:
+        driver: local
+    grafana_data:
         driver: local
     elasticsearch_data:
         driver: local

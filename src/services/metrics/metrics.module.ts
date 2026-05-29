@@ -14,18 +14,11 @@ export function createMetricsModule(deps: CreateMetricsModuleDependencies): Metr
     const factory = new MetricsFactory();
     const metricsSet = factory.createMetrics();
 
-    const recorder = new PrometheusRecorder({
-        activeSubscriptions: metricsSet.activeSubscriptions,
-        githubApiCalls: metricsSet.githubApiCalls,
-        emailsSent: metricsSet.emailsSent,
-        scannerRuns: metricsSet.scannerRuns,
-    });
+    const recorder = new PrometheusRecorder(metricsSet);
 
     const initializer = new MetricsInitializer(recorder, deps.subscriptionRepository, deps.logger);
 
     const metricsService = new MetricsService(metricsSet.registry, recorder, initializer);
 
-    return {
-        metricsService,
-    };
+    return { metricsService };
 }

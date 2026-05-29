@@ -1,4 +1,5 @@
 import type { SubscriptionRecord } from "../../types/subscription.js";
+import { elapsedSeconds } from "../../utils/hrtime.js";
 import { groupSubscriptionsByRepo, shouldNotifyForTag } from "./scanner.logic.js";
 import type { ScannerServiceDependencies } from "./scanner.types.js";
 
@@ -12,6 +13,7 @@ export class ScannerService {
             return;
         }
 
+        const t0 = process.hrtime.bigint();
         try {
             const subscriptions = await this.deps.subscriptionRepository.listConfirmedActive();
 
@@ -28,6 +30,7 @@ export class ScannerService {
             this.deps.metricsService.recordScannerRun("error");
             throw error;
         } finally {
+            this.deps.metricsService.recordScannerRunDuration(elapsedSeconds(t0));
             this.deps.lock.release();
         }
     }

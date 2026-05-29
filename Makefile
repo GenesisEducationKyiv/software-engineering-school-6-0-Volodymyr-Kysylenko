@@ -44,6 +44,18 @@ elk-init:
 elk-logs:
 	docker compose -f docker-compose.yml logs -f elasticsearch kibana filebeat
 
+.PHONY: monitoring-up
+monitoring-up:
+	docker compose -f docker-compose.yml --profile monitoring up -d
+
+.PHONY: monitoring-down
+monitoring-down:
+	docker compose -f docker-compose.yml --profile monitoring down
+
+.PHONY: monitoring-logs
+monitoring-logs:
+	docker compose -f docker-compose.yml logs -f prometheus grafana
+
 .PHONY: down-all
 down-all:
-	docker compose -f docker-compose.yml --profile elk down
+	docker compose -f docker-compose.yml --profile elk --profile monitoring down
