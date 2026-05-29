@@ -3,7 +3,7 @@ import { createClient } from "redis";
 import { env } from "../config/env.js";
 import { databaseHealthCheckAdapter } from "../db/adapters/database-health-check.adapter.js";
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
-import { logger } from "../utils/logger/logger.js";
+import { createLogger } from "../utils/logger/logger.js";
 import { createCacheModule } from "./cache/cache.module.js";
 import { RedisClientAdapter } from "./cache/cache.redis-client.js";
 import type { CacheClientFactory, CacheConfig } from "./cache/cache.types.js";
@@ -16,7 +16,7 @@ import { createMetricsModule } from "./metrics/metrics.module.js";
 import { createScannerModule } from "./scanner/scanner.module.js";
 import { createSubscriptionModule } from "./subscription/subscription.module.js";
 
-const metricsModule = createMetricsModule({ logger, subscriptionRepository });
+const metricsModule = createMetricsModule({ logger: createLogger("MetricsService"), subscriptionRepository });
 
 const healthEnvironment: HealthEnvironmentPort = {
     getNow: () => new Date(),
@@ -48,7 +48,7 @@ const emailModule = createEmailModule({
         },
         appBaseUrl: env.APP_BASE_URL,
     },
-    logger,
+    logger: createLogger("EmailService"),
     metrics: metricsModule.metricsService,
 });
 
@@ -62,14 +62,14 @@ const redisClientFactory: CacheClientFactory = (url) => new RedisClientAdapter(c
 
 const cacheModule = createCacheModule({
     config: cacheConfig,
-    logger,
+    logger: createLogger("CacheService"),
     createClient: redisClientFactory,
 });
 
 const githubModule = createGithubModule({
     httpClient: new DefaultGitHubHttpClient(env.GITHUB_API_TIMEOUT_MS, fetch),
     cache: cacheModule.cacheService,
-    logger,
+    logger: createLogger("GitHubService"),
     metrics: metricsModule.metricsService,
     githubToken: env.GITHUB_TOKEN,
 });
@@ -78,7 +78,7 @@ const subscriptionModule = createSubscriptionModule({
     emailService: emailModule.emailService,
     githubService: githubModule.githubService,
     subscriptionRepository,
-    logger,
+    logger: createLogger("SubscriptionService"),
 });
 
 const scannerModule = createScannerModule({
