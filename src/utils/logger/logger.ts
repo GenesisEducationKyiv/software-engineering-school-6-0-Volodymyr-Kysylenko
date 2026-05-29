@@ -1,11 +1,25 @@
+import { readFileSync } from "fs";
 import { hostname } from "os";
+import { join } from "path";
 import { createLogger as winstonCreateLogger, format, transports } from "winston";
 
 import { env } from "../../config/env.js";
 import type { LoggerPort } from "./logger.types.js";
 
 const SERVICE_NAME = "github-release-notifier";
-const SERVICE_VERSION = process.env.npm_package_version ?? process.env.APP_VERSION ?? "unknown";
+
+const SERVICE_VERSION = (() => {
+    if (process.env.npm_package_version) return process.env.npm_package_version;
+    if (process.env.APP_VERSION) return process.env.APP_VERSION;
+    try {
+        const pkg = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")) as {
+            version?: string;
+        };
+        return pkg.version ?? "unknown";
+    } catch {
+        return "unknown";
+    }
+})();
 
 function serializeError(error: unknown): Record<string, unknown> {
     if (error instanceof Error) {
