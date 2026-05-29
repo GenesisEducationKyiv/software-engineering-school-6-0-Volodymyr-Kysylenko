@@ -20,7 +20,7 @@
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "prepare": "husky",
         "test:env:up": "docker compose -f docker-compose.test.yml up -d --wait",
-        "test:env:down": "docker compose -f docker-compose.test.yml down",
+        "test:env:down": "docker compose -f docker-compose.test.yml down -v --remove-orphans",
         "test:unit": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run",
         "test:unit:coverage": "pnpm run test:unit --coverage",
         "test:integration": "node scripts/run-in-test-env.mjs \"pnpm run test:integration:run\"",
