@@ -1,67 +1,75 @@
+import { hostname } from "os";
+import { createLogger as winstonCreateLogger, format, transports } from "winston";
+
 import { env } from "../../config/env.js";
+import type { LoggerPort } from "./logger.types.js";
 
-export interface Logger {
-    info(message: string, meta?: Record<string, unknown>): void;
-    warn(message: string, meta?: Record<string, unknown>): void;
-    error(message: string, error?: unknown, meta?: Record<string, unknown>): void;
-    debug(message: string, meta?: Record<string, unknown>): void;
+const SERVICE_NAME = "github-release-notifier";
+const SERVICE_VERSION = process.env.npm_package_version ?? process.env.APP_VERSION ?? "unknown";
+
+function serializeError(error: unknown): Record<string, unknown> {
+    if (error instanceof Error) {
+        return {
+            errorMessage: error.message,
+            errorName: error.name,
+            stack: error.stack,
+        };
+    }
+    return { errorMessage: String(error) };
 }
-export class ConsoleLogger implements Logger {
-    private readonly logLevels = ["error", "warn", "info", "debug"];
 
-    constructor(private readonly context = "App") {}
+function resolveArgs(errorOrMeta?: unknown, meta?: Record<string, unknown>): Record<string, unknown> {
+    if (errorOrMeta === undefined) return meta ?? {};
+    if (
+        typeof errorOrMeta === "object" &&
+        errorOrMeta !== null &&
+        !(errorOrMeta instanceof Error) &&
+        !Array.isArray(errorOrMeta)
+    ) {
+        return { ...(errorOrMeta as Record<string, unknown>), ...meta };
+    }
+    return { ...serializeError(errorOrMeta), ...meta };
+}
 
-    private shouldLog(level: string): boolean {
-        const currentLevelIndex = this.logLevels.indexOf(env.LOG_LEVEL);
-        const messageLevelIndex = this.logLevels.indexOf(level);
-        return messageLevelIndex <= currentLevelIndex;
+export type { LoggerPort as Logger };
+
+export class ConsoleLogger implements LoggerPort {
+    private readonly winston;
+
+    constructor(context = "App") {
+        this.winston = winstonCreateLogger({
+            level: env.LOG_LEVEL,
+            format: format.combine(format.timestamp({ format: "YYYY-MM-DDTHH:mm:ss.SSSZ" }), format.json()),
+            defaultMeta: {
+                service: SERVICE_NAME,
+                version: SERVICE_VERSION,
+                environment: env.NODE_ENV,
+                context,
+                hostname: hostname(),
+            },
+            transports: [new transports.Console()],
+        });
     }
 
     info(message: string, meta?: Record<string, unknown>): void {
-        if (this.shouldLog("info")) {
-            this.log("INFO", message, meta);
-        }
+        this.winston.info(message, meta);
     }
 
-    warn(message: string, error?: unknown, meta?: Record<string, unknown>): void {
-        if (this.shouldLog("warn")) {
-            const errorMeta =
-                error instanceof Error
-                    ? { error: error.message, stack: error.stack, ...meta }
-                    : { error: String(error), ...meta };
-
-            this.log("WARN", message, errorMeta);
-        }
+    warn(message: string, errorOrMeta?: unknown, meta?: Record<string, unknown>): void {
+        this.winston.warn(message, resolveArgs(errorOrMeta, meta));
     }
 
-    error(message: string, error?: unknown, meta?: Record<string, unknown>): void {
-        if (this.shouldLog("error")) {
-            const errorMeta =
-                error instanceof Error
-                    ? { error: error.message, stack: error.stack, ...meta }
-                    : { error: String(error), ...meta };
-            this.log("ERROR", message, errorMeta);
-        }
+    error(message: string, errorOrMeta?: unknown, meta?: Record<string, unknown>): void {
+        this.winston.error(message, resolveArgs(errorOrMeta, meta));
     }
 
     debug(message: string, meta?: Record<string, unknown>): void {
-        if (this.shouldLog("debug")) {
-            this.log("DEBUG", message, meta);
-        }
+        this.winston.debug(message, meta);
     }
+}
 
-    private log(level: string, message: string, meta?: Record<string, unknown>): void {
-        const timestamp = new Date().toISOString();
-        const logEntry = {
-            timestamp,
-            level,
-            context: this.context,
-            message,
-            ...meta,
-        };
-
-        console.log(JSON.stringify(logEntry));
-    }
+export function createLogger(context: string): ConsoleLogger {
+    return new ConsoleLogger(context);
 }
 
 export const logger = new ConsoleLogger();

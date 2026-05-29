@@ -62,3 +62,6 @@ Thumbs.db
 
 # Generated gRPC types
 src/grpc/generated/
+
+# Docker Compose override for development
+docker-compose.dev.yml
