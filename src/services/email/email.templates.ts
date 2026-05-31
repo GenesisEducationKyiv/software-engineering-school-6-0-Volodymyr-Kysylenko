@@ -48,15 +48,13 @@ export class EmailTemplateBuilder implements EmailTemplatePort {
                 `Опубліковано новий реліз репозиторію ${input.repo}.`,
                 ``,
                 `Версія: ${input.tagName}`,
-                input.releaseName ? `Назва: ${input.releaseName}` : "",
+                ...(input.releaseName ? [`Назва: ${input.releaseName}`] : []),
                 `Деталі: ${input.releaseUrl}`,
                 ``,
                 `Відписатися:`,
                 `Браузер: ${links.unsubscribePageUrl}`,
                 `API: ${links.unsubscribeApiUrl}`,
-            ]
-                .filter((line) => line !== "")
-                .join("\n"),
+            ].join("\n"),
         };
     }
 }

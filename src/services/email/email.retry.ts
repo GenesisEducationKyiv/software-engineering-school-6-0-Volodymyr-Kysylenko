@@ -74,8 +74,8 @@ export class RetryingEmailClient implements EmailClient {
     }
 
     private extractSmtpCode(error: Error): number | null {
-        const match = /^(\d{3})\s/.exec(error.message);
-        return match ? Number(match[1]) : null;
+        const responseCode = (error as { responseCode?: number }).responseCode;
+        return typeof responseCode === "number" ? responseCode : null;
     }
 
     private async delay(ms: number): Promise<void> {

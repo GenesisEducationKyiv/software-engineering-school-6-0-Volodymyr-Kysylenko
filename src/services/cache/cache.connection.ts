@@ -12,11 +12,6 @@ export class RedisCacheConnection implements CacheStorePort, CacheLifecyclePort 
     constructor(private readonly deps: CacheConnectionDependencies) {}
 
     async connect(): Promise<void> {
-        if (!this.deps.config.enabled) {
-            this.deps.logger.info("Cache disabled - skipping connection");
-            return;
-        }
-
         if (this.isConnected()) {
             return;
         }

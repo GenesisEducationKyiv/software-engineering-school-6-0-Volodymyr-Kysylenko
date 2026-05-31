@@ -54,7 +54,7 @@ export interface CacheServiceDependencies {
 }
 
 export interface CacheConnectionDependencies {
-    config: Pick<CacheConfig, "enabled" | "redisUrl">;
+    config: Pick<CacheConfig, "redisUrl">;
     logger: LoggerPort;
     createClient: CacheClientFactory;
 }
