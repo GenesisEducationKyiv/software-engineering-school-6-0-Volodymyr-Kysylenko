@@ -8,13 +8,14 @@ import { metricsService } from "../services/services.module.js";
 
 function createIsolatedService(): MetricsService {
     const set = createMetrics();
-    const recorder = new PrometheusRecorder(set);
+    const { registry, ...recordableMetrics } = set;
+    const recorder = new PrometheusRecorder(recordableMetrics);
     const initializer = new MetricsInitializer(
         recorder,
         { countActiveSubscriptions: vi.fn().mockResolvedValue(0) },
         { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
     );
-    return new MetricsService(set, recorder, initializer);
+    return new MetricsService({ metrics: async () => registry.metrics() }, recorder, initializer);
 }
 
 describe("Prometheus Metrics - Simplified", () => {
