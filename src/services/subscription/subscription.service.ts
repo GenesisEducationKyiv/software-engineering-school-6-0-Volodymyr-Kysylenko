@@ -3,8 +3,7 @@ import type { SubscriptionResponse } from "../../types/subscription.js";
 import { generateToken } from "../../utils/crypto.js";
 import { AppError } from "../../utils/errors.js";
 import { parseRepo, validateEmail } from "../../utils/validators.js";
-import { emailService } from "../email/email.service.js";
-import { githubService } from "../github/github.service.js";
+import { emailService, githubService } from "../services.module.js";
 
 export class SubscriptionService {
     private validateToken(token: string): void {

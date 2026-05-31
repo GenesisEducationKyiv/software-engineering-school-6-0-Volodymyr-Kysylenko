@@ -7,11 +7,10 @@ import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
-import { cacheService } from "./services/cache/cache.service.js";
-// services
-import { emailService } from "./services/email/email.service.js";
 import { metricsService } from "./services/metrics/metrics.service.js";
 import { scannerService } from "./services/scanner/scanner.service.js";
+// services
+import { cacheLifecycle, emailService } from "./services/services.module.js";
 // logger
 import { logger } from "./utils/logger/logger.js";
 
@@ -24,7 +23,7 @@ async function bootstrap() {
 
     // Redis cache connection verification
     try {
-        await cacheService.connect();
+        await cacheLifecycle.connect();
         logger.info("Redis cache connected");
     } catch (error) {
         logger.warn("Redis connection failed, cache will be disabled", error);
@@ -81,7 +80,7 @@ async function bootstrap() {
 
 void bootstrap().catch(async (error: unknown) => {
     logger.error("Application bootstrap failed", error);
-    await cacheService.disconnect();
+    await cacheLifecycle.disconnect();
     await pool.end();
     process.exit(1);
 });
@@ -89,7 +88,7 @@ void bootstrap().catch(async (error: unknown) => {
 async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
     logger.info(`Received ${signal}, shutting down gracefully...`);
 
-    await cacheService.disconnect();
+    await cacheLifecycle.disconnect();
     await pool.end();
 
     process.exit(0);

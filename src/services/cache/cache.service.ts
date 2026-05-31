@@ -1,131 +1,50 @@
-import { createClient, type RedisClientType } from "redis";
+import type { CacheEntry, CacheServiceDependencies, CacheServicePort } from "./cache.types.js";
 
-import { env } from "../../config/env.js";
-import { logger } from "../../utils/logger/logger.js";
-
-class CacheService {
-    private client: RedisClientType | null = null;
-    private connected = false;
-
-    async connect(): Promise<void> {
-        if (!env.CACHE_ENABLED) {
-            logger.info("Cache disabled - skipping Redis connection");
-            return;
-        }
-
-        try {
-            this.client = createClient({
-                url: env.REDIS_URL,
-            });
-
-            this.client.on("error", (err) => {
-                logger.error("Redis client error:", err);
-                this.connected = false;
-            });
-
-            this.client.on("connect", () => {
-                logger.info("Redis client connected");
-                this.connected = true;
-            });
-
-            this.client.on("disconnect", () => {
-                logger.warn("Redis client disconnected");
-                this.connected = false;
-            });
-
-            await this.client.connect();
-        } catch (error) {
-            logger.error("Failed to connect to Redis:", error);
-            this.client = null;
-            this.connected = false;
-        }
-    }
-
-    async disconnect(): Promise<void> {
-        if (this.client && this.connected) {
-            await this.client.disconnect();
-            this.client = null;
-            this.connected = false;
-            logger.info("Redis client disconnected");
-        }
-    }
+export class CacheService implements CacheServicePort {
+    constructor(private readonly deps: CacheServiceDependencies) {}
 
     async get<T>(key: string): Promise<T | null> {
-        if (!this.isAvailable()) {
-            return null;
-        }
+        const entry = await this.getEntry<T>(key);
 
+        return entry.hit ? entry.value : null;
+    }
+
+    async getEntry<T>(key: string): Promise<CacheEntry<T>> {
         try {
-            if (!this.client) {
-                return null;
-            }
-            const cached = await this.client.get(key);
-            if (!cached) {
-                return null;
+            const cached = await this.deps.store.getRaw(key);
+            if (cached === null) {
+                return { hit: false, value: null };
             }
 
-            return JSON.parse(cached) as T;
+            return { hit: true, value: this.deps.serializer.deserialize<T>(cached) };
         } catch (error) {
-            logger.error("Cache get error:", { key, error });
-            return null;
+            this.deps.logger.error("Cache get error:", { key, error });
+            return { hit: false, value: null };
         }
     }
 
     async set(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
-        if (!this.isAvailable()) {
-            return;
-        }
-
         try {
-            const ttl = ttlSeconds ?? env.REDIS_TTL_SECONDS;
-            if (this.client) {
-                await this.client.setEx(key, ttl, JSON.stringify(value));
-            }
+            const ttl = ttlSeconds ?? this.deps.config.defaultTtlSeconds;
+            await this.deps.store.setRaw(key, this.deps.serializer.serialize(value), ttl);
         } catch (error) {
-            logger.error("Cache set error:", { key, error });
+            this.deps.logger.error("Cache set error:", { key, error });
         }
     }
 
     async del(key: string): Promise<void> {
-        if (!this.isAvailable()) {
-            return;
-        }
-
         try {
-            if (this.client) {
-                await this.client.del(key);
-            }
+            await this.deps.store.del(key);
         } catch (error) {
-            logger.error("Cache delete error:", { key, error });
+            this.deps.logger.error("Cache delete error:", { key, error });
         }
     }
 
     async flush(): Promise<void> {
-        if (!this.isAvailable()) {
-            return;
-        }
-
         try {
-            if (this.client) {
-                await this.client.flushAll();
-            }
+            await this.deps.store.flush();
         } catch (error) {
-            logger.error("Cache flush error:", error);
+            this.deps.logger.error("Cache flush error:", error);
         }
-    }
-
-    isConnected(): boolean {
-        return this.connected && this.client !== null;
-    }
-
-    private isAvailable(): boolean {
-        return env.CACHE_ENABLED && this.connected && this.client !== null;
-    }
-
-    static generateKey(prefix: string, ...parts: string[]): string {
-        return `${prefix}:${parts.join(":")}`;
     }
 }
-
-export const cacheService = new CacheService();
-export { CacheService };
