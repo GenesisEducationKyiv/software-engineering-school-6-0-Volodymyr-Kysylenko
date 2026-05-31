@@ -1,7 +1,7 @@
 import * as grpc from "@grpc/grpc-js";
 
 import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
-import { subscriptionService } from "../services/subscription/subscription.service.js";
+import { subscriptionService } from "../services/services.module.js";
 import { AppError } from "../utils/errors.js";
 import type { SubscriptionServiceHandlers } from "./generated/subscription/SubscriptionService.js";
 import { mapHttpToGrpcStatus, validateGrpcRequest } from "./validation.utils.js";
