@@ -10,8 +10,15 @@ function normalizePath(path: string): string {
     return path.replace(UUID_RE, "/:uuid").replace(NUMERIC_ID_RE, "/:id");
 }
 
+const SKIP_PATHS = new Set(["/api/metrics", "/api/health"]);
+
 export function createHttpMetricsMiddleware(metrics: MetricsHttpPort) {
     return (req: Request, res: Response, next: NextFunction): void => {
+        if (SKIP_PATHS.has(req.path)) {
+            next();
+            return;
+        }
+
         const { method } = req;
         const startNs = process.hrtime.bigint();
 

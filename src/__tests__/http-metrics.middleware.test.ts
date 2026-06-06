@@ -17,9 +17,9 @@ function makeMetrics(): MetricsHttpPort {
 function makeReq(overrides: Record<string, unknown> = {}): Request {
     return {
         method: "GET",
-        path: "/api/health",
+        path: "/api/subscriptions",
         baseUrl: "/api",
-        route: { path: "/health" },
+        route: { path: "/subscriptions" },
         ...overrides,
     } as unknown as Request;
 }
@@ -61,7 +61,7 @@ describe("createHttpMetricsMiddleware", () => {
         res.emit("finish");
 
         expect(metrics.decrementHttpInFlight).toHaveBeenCalledWith("GET");
-        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "/api/health", "200", expect.any(Number));
+        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "/api/subscriptions", "200", expect.any(Number));
     });
 
     it("uses the matched Express route pattern as the route label", () => {
@@ -157,6 +157,19 @@ describe("createHttpMetricsMiddleware", () => {
         expect(duration).toBeLessThan(1);
     });
 
+    it.each(["/api/metrics", "/api/health"])("skips tracking for %s (internal endpoint)", (path) => {
+        const middleware = createHttpMetricsMiddleware(metrics);
+        const req = makeReq({ path, route: null });
+        const res = makeRes(200);
+        middleware(req, res, noop);
+
+        res.emit("finish");
+
+        expect(metrics.incrementHttpInFlight).not.toHaveBeenCalled();
+        expect(metrics.recordHttpRequest).not.toHaveBeenCalled();
+        expect(noop).toHaveBeenCalledOnce();
+    });
+
     it("propagates POST method to the in-flight gauge label", () => {
         const middleware = createHttpMetricsMiddleware(metrics);
         const req = makeReq({ method: "POST" });
@@ -168,6 +181,6 @@ describe("createHttpMetricsMiddleware", () => {
         res.emit("finish");
 
         expect(metrics.decrementHttpInFlight).toHaveBeenCalledWith("POST");
-        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("POST", "/api/health", "201", expect.any(Number));
+        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("POST", "/api/subscriptions", "201", expect.any(Number));
     });
 });
