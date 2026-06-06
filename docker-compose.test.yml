@@ -1,8 +1,8 @@
 services:
     notification-service:
         build:
-            context: ./apps/notification-service
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: apps/notification-service/Dockerfile
         ports:
             - "4000:4000"
         env_file:
