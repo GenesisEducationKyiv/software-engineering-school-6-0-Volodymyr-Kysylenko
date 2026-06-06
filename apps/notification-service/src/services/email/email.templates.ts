@@ -17,7 +17,11 @@ export class EmailTemplateBuilder implements EmailTemplatePort {
     ) {}
 
     buildConfirmationEmail(input: EmailConfirmationInput): EmailMessage {
-        const links = this.linkBuilder.buildConfirmationLinks(input.confirmToken, input.unsubscribeToken);
+        const links = this.linkBuilder.buildConfirmationLinks(
+            input.confirmToken,
+            input.unsubscribeToken,
+            input.appBaseUrl,
+        );
 
         return {
             from: this.config.from,
@@ -38,7 +42,7 @@ export class EmailTemplateBuilder implements EmailTemplatePort {
     }
 
     buildNewReleaseEmail(input: EmailNewReleaseInput): EmailMessage {
-        const links = this.linkBuilder.buildUnsubscribeLinks(input.unsubscribeToken);
+        const links = this.linkBuilder.buildUnsubscribeLinks(input.unsubscribeToken, input.appBaseUrl);
 
         return {
             from: this.config.from,

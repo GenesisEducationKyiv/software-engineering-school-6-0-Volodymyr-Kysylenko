@@ -65,11 +65,7 @@ export class RetryingEmailClient implements EmailClient {
 
     private shouldRetry(error: Error): boolean {
         const smtpCode = this.extractSmtpCode(error);
-
-        if (smtpCode === null) {
-            return true;
-        }
-
+        if (smtpCode === null) return true;
         return smtpCode < 500;
     }
 

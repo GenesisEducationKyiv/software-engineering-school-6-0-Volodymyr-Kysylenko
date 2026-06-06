@@ -65,3 +65,5 @@ src/grpc/generated/
 
 # Docker Compose override for development
 docker-compose.dev.yml
+
+Makefile.dev

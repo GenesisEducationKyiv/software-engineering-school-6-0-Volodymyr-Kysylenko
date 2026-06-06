@@ -1,4 +1,27 @@
 services:
+    notification-service:
+        build:
+            context: ./apps/notification-service
+            dockerfile: Dockerfile
+        ports:
+            - "4000:4000"
+        env_file:
+            - ./apps/notification-service/.env.test
+        depends_on:
+            - mailhog
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://localhost:4000/api/health').then(r=>r.ok?process.exit(0):process.exit(1))",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+            start_period: 10s
+
     db:
         image: postgres:17-alpine
         environment:

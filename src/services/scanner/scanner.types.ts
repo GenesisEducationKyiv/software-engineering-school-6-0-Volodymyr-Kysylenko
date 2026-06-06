@@ -1,5 +1,5 @@
 import type { SubscriptionRecord } from "../../types/subscription.js";
-import type { EmailServicePort } from "../email/email.types.js";
+import type { EmailServicePort } from "../notification/notification.types.js";
 
 export interface ScannerLockPort {
     acquire(): boolean;

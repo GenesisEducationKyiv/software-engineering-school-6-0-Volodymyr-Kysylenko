@@ -21,7 +21,6 @@ export interface EmailConfig {
         baseDelayMs: number;
         maxDelayMs: number;
     };
-    appBaseUrl: string;
 }
 
 export interface CreateEmailModuleDependencies {
@@ -45,9 +44,7 @@ export function createEmailModule(deps: CreateEmailModuleDependencies): EmailMod
     });
 
     const emailClient = new RetryingEmailClient(smtpClient, deps.config.retry, deps.logger);
-
-    const linkBuilder = new AppEmailLinkBuilder({ appBaseUrl: deps.config.appBaseUrl });
-
+    const linkBuilder = new AppEmailLinkBuilder();
     const templateBuilder = new EmailTemplateBuilder({ from: deps.config.smtp.from }, linkBuilder);
 
     return {

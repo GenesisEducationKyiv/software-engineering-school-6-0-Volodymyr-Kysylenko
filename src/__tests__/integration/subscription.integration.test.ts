@@ -20,10 +20,6 @@ describe("Subscription API Integration Tests", () => {
             DATABASE_URL: env.DATABASE_URL.replace(/:[^:@]*@/, ":***@"), // Hide password
             REDIS_URL: env.REDIS_URL,
             APP_BASE_URL: env.APP_BASE_URL,
-            SMTP_HOST: env.SMTP_HOST,
-            SMTP_PORT: env.SMTP_PORT,
-            SMTP_EMAIL_FROM: env.SMTP_EMAIL_FROM,
-            SMTP_SECURE: env.SMTP_SECURE,
             CACHE_ENABLED: env.CACHE_ENABLED,
             GITHUB_TOKEN: env.GITHUB_TOKEN ? "[SET]" : "[NOT SET]",
         });

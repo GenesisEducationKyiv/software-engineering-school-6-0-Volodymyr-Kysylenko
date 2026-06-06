@@ -1,18 +1,23 @@
+COMPOSE = docker compose -f docker-compose.yml
+NETWORK = github-release-notifier_app-network
+
+# ── Base ──────────────────────────────────────────────────────────────────────
+
 .PHONY: prod-up
 prod-up:
-	docker compose -f docker-compose.yml up -d --build
+	$(COMPOSE) up -d --build
 
 .PHONY: prod-start
 prod-start:
-	docker compose -f docker-compose.yml up -d
+	$(COMPOSE) up -d
 
 .PHONY: prod-down
 prod-down:
-	docker compose -f docker-compose.yml down
+	$(COMPOSE) down
 
 .PHONY: prod-logs
 prod-logs:
-	docker compose -f docker-compose.yml logs -f
+	$(COMPOSE) logs -f
 
 .PHONY: health
 health:
@@ -20,21 +25,22 @@ health:
 
 .PHONY: backup
 backup:
-	docker compose -f docker-compose.yml exec db pg_dump -U postgres releases > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	$(COMPOSE) exec db pg_dump -U postgres releases > backup_$(shell date +%Y%m%d_%H%M%S).sql
+
+# ── ELK ───────────────────────────────────────────────────────────────────────
 
 .PHONY: elk-up
 elk-up:
-	docker compose -f docker-compose.yml --profile elk up -d
+	$(COMPOSE) --profile elk up -d
 
 .PHONY: elk-down
 elk-down:
-	docker compose -f docker-compose.yml stop elasticsearch kibana filebeat
-	docker compose -f docker-compose.yml rm -f elasticsearch kibana filebeat
+	$(COMPOSE) rm -f --stop elasticsearch kibana filebeat
 
 .PHONY: elk-init
 elk-init:
 	docker run --rm \
-		--network github-release-notifier_app-network \
+		--network $(NETWORK) \
 		-v "$(CURDIR)/elasticsearch:/scripts:ro" \
 		-e ELASTICSEARCH_URL=http://elasticsearch:9200 \
 		-e KIBANA_URL=http://kibana:5601 \
@@ -42,20 +48,28 @@ elk-init:
 
 .PHONY: elk-logs
 elk-logs:
-	docker compose -f docker-compose.yml logs -f elasticsearch kibana filebeat
+	$(COMPOSE) logs -f elasticsearch kibana filebeat
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
 
 .PHONY: monitoring-up
 monitoring-up:
-	docker compose -f docker-compose.yml --profile monitoring up -d
+	$(COMPOSE) --profile monitoring up -d
 
 .PHONY: monitoring-down
 monitoring-down:
-	docker compose -f docker-compose.yml --profile monitoring down
+	$(COMPOSE) rm -f --stop prometheus grafana
 
 .PHONY: monitoring-logs
 monitoring-logs:
-	docker compose -f docker-compose.yml logs -f prometheus grafana
+	$(COMPOSE) logs -f prometheus grafana
 
-.PHONY: down-all
-down-all:
-	docker compose -f docker-compose.yml --profile elk --profile monitoring down
+# ── Full infrastructure ───────────────────────────────────────────────────────
+
+.PHONY: infra-up
+infra-up:
+	$(COMPOSE) --profile elk --profile monitoring up -d --build
+
+.PHONY: infra-down
+infra-down:
+	$(COMPOSE) --profile elk --profile monitoring down

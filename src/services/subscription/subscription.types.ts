@@ -1,7 +1,7 @@
 import type { SubscriptionRecord, SubscriptionResponse } from "../../types/subscription.js";
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
-import type { EmailServicePort } from "../email/email.types.js";
 import type { GitHubServicePort } from "../github/github.types.js";
+import type { EmailServicePort } from "../notification/notification.types.js";
 
 export interface SubscriptionRepositoryPort {
     create(input: {
