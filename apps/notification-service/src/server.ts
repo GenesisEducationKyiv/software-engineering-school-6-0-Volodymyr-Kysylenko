@@ -1,6 +1,9 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { HealthService } from "./health/health.service.js";
+import type { HealthCheck, HealthCheckFunction } from "./health/health.types.js";
+import { RedisIdempotencyStore } from "./idempotency/redis-idempotency.store.js";
+import { createMessagingModule } from "./messaging/messaging.module.js";
 import { createServicesModule } from "./services/services.module.js";
 import { createLogger, logger } from "./utils/logger/logger.js";
 
@@ -14,17 +17,70 @@ async function bootstrap(): Promise<void> {
 
     const services = createServicesModule();
     const version = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
-    const healthService = new HealthService(version);
 
+    let smtpVerified = false;
     try {
         await services.emailService.verifyConnection();
+        smtpVerified = true;
         logger.info("SMTP connection verified");
     } catch (error) {
         logger.warn("SMTP verification failed, continuing startup", error);
     }
 
-    const app = createApp({
+    const idempotencyStore = new RedisIdempotencyStore(
+        { redisUrl: env.REDIS_URL, ttlSeconds: env.IDEMPOTENCY_TTL_SECONDS },
+        createLogger("IdempotencyStore"),
+    );
+
+    try {
+        await idempotencyStore.connect();
+        logger.info("Redis idempotency store connected");
+    } catch (error) {
+        logger.warn("Redis connection failed, will retry in background", error);
+    }
+
+    const messaging = createMessagingModule({
+        config: {
+            rabbitmq: { url: env.RABBITMQ_URL },
+            prefetch: env.RABBITMQ_PREFETCH,
+            appBaseUrl: env.APP_BASE_URL,
+            publishConfirmTimeoutMs: env.RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_MS,
+        },
         emailService: services.emailService,
+        idempotencyStore,
+        logger: createLogger("NotificationConsumer"),
+    });
+
+    try {
+        await messaging.start();
+        logger.info("RabbitMQ consumer started");
+    } catch (error) {
+        logger.warn("RabbitMQ connection failed, will retry in background", error);
+    }
+
+    const smtpCheck: HealthCheckFunction = (): HealthCheck => ({
+        name: "smtp",
+        status: smtpVerified ? "ok" : "unhealthy",
+    });
+    const rabbitmqCheck: HealthCheckFunction = (): HealthCheck => ({
+        name: "rabbitmq",
+        status: messaging.connection.isConnected() ? "ok" : "unhealthy",
+    });
+    const redisCheck: HealthCheckFunction = (): HealthCheck => ({
+        name: "redis",
+        status: idempotencyStore.isConnected() ? "ok" : "unhealthy",
+    });
+
+    const healthService = new HealthService(
+        version,
+        new Map([
+            ["smtp", smtpCheck],
+            ["rabbitmq", rabbitmqCheck],
+            ["redis", redisCheck],
+        ]),
+    );
+
+    const app = createApp({
         healthService,
         logger: createLogger("Http"),
     });
@@ -36,7 +92,11 @@ async function bootstrap(): Promise<void> {
     const shutdown = (signal: string): void => {
         logger.info(`Received ${signal}, shutting down gracefully`);
         server.close(() => {
-            void services.emailService.close().finally(() => {
+            void Promise.all([
+                services.emailService.close(),
+                messaging.connection.disconnect(),
+                idempotencyStore.disconnect(),
+            ]).finally(() => {
                 logger.info("HTTP server closed");
                 process.exit(0);
             });

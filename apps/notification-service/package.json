@@ -5,24 +5,38 @@
     "type": "module",
     "packageManager": "pnpm@10.0.0",
     "scripts": {
+        "build:contracts": "pnpm --filter @github-release-notifier/broker-contracts build",
+        "predev": "pnpm run build:contracts",
         "dev": "tsx watch src/server.ts",
+        "prebuild": "pnpm run build:contracts",
         "build": "tsc -p tsconfig.json",
         "start": "node dist/server.js",
-        "typecheck": "tsc -p tsconfig.json --noEmit"
+        "pretypecheck": "pnpm run build:contracts",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "pretest:unit": "pnpm run build:contracts",
+        "test:unit": "cross-env NODE_ENV=test vitest run",
+        "test:unit:coverage": "pnpm run test:unit -- --coverage"
     },
     "dependencies": {
+        "@github-release-notifier/broker-contracts": "workspace:*",
+        "amqplib": "^0.10.4",
         "dotenv": "^16.6.1",
         "express": "^4.21.2",
         "helmet": "^8.1.0",
         "nodemailer": "^6.10.0",
+        "redis": "^4.7.0",
         "winston": "^3.19.0",
         "zod": "^3.24.1"
     },
     "devDependencies": {
+        "@types/amqplib": "^0.10.5",
         "@types/express": "^5.0.0",
         "@types/node": "^22.19.17",
         "@types/nodemailer": "^6.4.17",
+        "@vitest/coverage-v8": "2.1.9",
+        "cross-env": "^7.0.3",
         "tsx": "^4.19.2",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "^2.1.8"
     }
 }

@@ -1,5 +1,8 @@
+import type { PoolClient } from "pg";
+
+import type { TransactionRunner } from "../../db/transaction.js";
 import type { SubscriptionRecord } from "../../types/subscription.js";
-import type { EmailServicePort } from "../notification/notification.types.js";
+import type { NotificationCommandPublisherPort } from "../notification/notification.types.js";
 
 export interface ScannerLockPort {
     acquire(): boolean;
@@ -9,7 +12,7 @@ export interface ScannerLockPort {
 export interface ScannerSubscriptionRepositoryPort {
     listConfirmedActive(): Promise<SubscriptionRecord[]>;
     countActiveSubscriptions(): Promise<number>;
-    updateLastSeenTagByRepo(repoFullName: string, tag: string): Promise<void>;
+    updateLastSeenTagByRepo(client: PoolClient, repoFullName: string, tag: string): Promise<void>;
 }
 
 export interface ScannerRelease {
@@ -29,9 +32,10 @@ export interface ScannerMetricsPort {
 }
 
 export interface ScannerServiceDependencies {
-    emailService: EmailServicePort;
+    notificationPublisher: NotificationCommandPublisherPort;
     subscriptionRepository: ScannerSubscriptionRepositoryPort;
     githubService: ScannerGithubPort;
     metricsService: ScannerMetricsPort;
     lock: ScannerLockPort;
+    transactionRunner: TransactionRunner;
 }

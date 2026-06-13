@@ -8,9 +8,11 @@ const metricsController = createMetricsController({
     metricsService,
 });
 
-const { healthCheck, metricsCheck } = metricsController;
+const { healthCheck, liveCheck, metricsCheck, readyCheck } = metricsController;
 
 export const metricsRouter = Router();
 
 metricsRouter.get("/metrics", metricsCheck);
 metricsRouter.get("/health", healthCheck);
+metricsRouter.get("/health/live", liveCheck);
+metricsRouter.get("/health/ready", readyCheck);

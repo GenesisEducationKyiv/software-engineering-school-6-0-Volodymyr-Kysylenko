@@ -2,6 +2,8 @@ import { createClient } from "redis";
 
 import { env } from "../config/env.js";
 import { databaseHealthCheckAdapter } from "../db/adapters/database-health-check.adapter.js";
+import { withTransaction } from "../db/transaction.js";
+import { outboxRepository } from "../repositories/outbox.repository.js";
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
 import { createLogger } from "../utils/logger/logger.js";
 import { createCacheModule } from "./cache/cache.module.js";
@@ -30,11 +32,7 @@ const healthModule = createHealthModule({
     subscriptionRepository,
 });
 
-const notificationModule = createNotificationModule({
-    serviceUrl: env.NOTIFICATION_SERVICE_URL,
-    timeoutMs: env.NOTIFICATION_SERVICE_TIMEOUT_MS,
-    appBaseUrl: env.APP_BASE_URL,
-});
+const notificationModule = createNotificationModule(outboxRepository);
 
 const cacheConfig: CacheConfig = {
     enabled: env.CACHE_ENABLED,
@@ -59,20 +57,22 @@ const githubModule = createGithubModule({
 });
 
 const subscriptionModule = createSubscriptionModule({
-    emailService: notificationModule.emailService,
+    notificationPublisher: notificationModule.notificationPublisher,
     githubService: githubModule.githubService,
     subscriptionRepository,
     logger: createLogger("SubscriptionService"),
+    transactionRunner: withTransaction,
 });
 
 const scannerModule = createScannerModule({
-    emailService: notificationModule.emailService,
+    notificationPublisher: notificationModule.notificationPublisher,
     githubService: githubModule.githubService,
-    metricsService: metricsModule.metricsService,
     subscriptionRepository,
+    metricsService: metricsModule.metricsService,
+    transactionRunner: withTransaction,
 });
 
-export const emailService = notificationModule.emailService;
+export const notificationPublisher = notificationModule.notificationPublisher;
 export const githubService = githubModule.githubService;
 export const healthService = healthModule.healthService;
 export const metricsService = metricsModule.metricsService;

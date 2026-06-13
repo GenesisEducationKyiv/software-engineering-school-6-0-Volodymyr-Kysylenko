@@ -31,28 +31,32 @@ export class SubscriptionService {
         const confirmToken = generateToken();
         const unsubscribeToken = generateToken();
 
-        const record = existing
-            ? await this.deps.subscriptionRepository.reactivate({
-                  id: existing.id,
-                  confirmToken,
-                  unsubscribeToken,
-                  lastSeenTag: latestRelease?.tagName ?? null,
-              })
-            : await this.deps.subscriptionRepository.create({
-                  email,
-                  repoOwner: parsedRepo.owner,
-                  repoName: parsedRepo.repo,
-                  repoFullName: parsedRepo.fullName,
-                  confirmToken,
-                  unsubscribeToken,
-                  lastSeenTag: latestRelease?.tagName ?? null,
-              });
+        const record = await this.deps.transactionRunner(async (client) => {
+            const subscriptionRecord = existing
+                ? await this.deps.subscriptionRepository.reactivate(client, {
+                      id: existing.id,
+                      confirmToken,
+                      unsubscribeToken,
+                      lastSeenTag: latestRelease?.tagName ?? null,
+                  })
+                : await this.deps.subscriptionRepository.create(client, {
+                      email,
+                      repoOwner: parsedRepo.owner,
+                      repoName: parsedRepo.repo,
+                      repoFullName: parsedRepo.fullName,
+                      confirmToken,
+                      unsubscribeToken,
+                      lastSeenTag: latestRelease?.tagName ?? null,
+                  });
 
-        await this.deps.emailService.sendConfirmationEmail({
-            to: record.email,
-            repo: record.repo_full_name,
-            confirmToken: record.confirm_token,
-            unsubscribeToken: record.unsubscribe_token,
+            await this.deps.notificationPublisher.sendConfirmationEmail(client, {
+                to: subscriptionRecord.email,
+                repo: subscriptionRecord.repo_full_name,
+                confirmToken: subscriptionRecord.confirm_token,
+                unsubscribeToken: subscriptionRecord.unsubscribe_token,
+            });
+
+            return subscriptionRecord;
         });
 
         this.deps.logger.info("Subscription confirmation email sent", {

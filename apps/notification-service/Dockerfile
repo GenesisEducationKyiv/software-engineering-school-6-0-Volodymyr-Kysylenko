@@ -7,9 +7,12 @@ WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/notification-service/package.json ./apps/notification-service/
+COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 RUN pnpm install --filter notification-service --frozen-lockfile
 
+COPY packages/broker-contracts/src ./packages/broker-contracts/src
+COPY packages/broker-contracts/tsconfig.json ./packages/broker-contracts/
 COPY apps/notification-service/src ./apps/notification-service/src
 COPY apps/notification-service/tsconfig.json ./apps/notification-service/
 
@@ -27,12 +30,15 @@ WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/notification-service/package.json ./apps/notification-service/
+COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 RUN pnpm install --filter notification-service --frozen-lockfile --prod --ignore-scripts && \
     pnpm store prune && \
     rm -rf "$(pnpm store path --silent)"
 
 COPY --from=builder --chown=appuser:nodejs /app/apps/notification-service/dist ./apps/notification-service/dist
+COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/package.json ./packages/broker-contracts/package.json
+COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/dist ./packages/broker-contracts/dist
 
 USER appuser
 

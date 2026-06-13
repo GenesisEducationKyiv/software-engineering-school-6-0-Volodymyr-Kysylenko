@@ -1,4 +1,5 @@
-import type { EmailServicePort } from "../notification/notification.types.js";
+import type { TransactionRunner } from "../../db/transaction.js";
+import type { NotificationCommandPublisherPort } from "../notification/notification.types.js";
 import { InMemoryScannerLock } from "./scanner.lock.js";
 import { ScannerService } from "./scanner.service.js";
 import type {
@@ -13,20 +14,22 @@ export interface ScannerModule {
 }
 
 export interface CreateScannerModuleDependencies {
-    emailService: EmailServicePort;
+    notificationPublisher: NotificationCommandPublisherPort;
     githubService: ScannerGithubPort;
     subscriptionRepository: ScannerSubscriptionRepositoryPort;
     metricsService: ScannerMetricsPort;
+    transactionRunner: TransactionRunner;
     lock?: ScannerLockPort;
 }
 
 export function createScannerModule(deps: CreateScannerModuleDependencies): ScannerModule {
     return {
         scannerService: new ScannerService({
-            emailService: deps.emailService,
+            notificationPublisher: deps.notificationPublisher,
             githubService: deps.githubService,
             subscriptionRepository: deps.subscriptionRepository,
             metricsService: deps.metricsService,
+            transactionRunner: deps.transactionRunner,
             lock: deps.lock ?? new InMemoryScannerLock(),
         }),
     };

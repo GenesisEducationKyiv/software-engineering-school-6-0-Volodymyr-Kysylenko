@@ -1,0 +1,32 @@
+{
+    "name": "@github-release-notifier/broker-contracts",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "test:unit": "cross-env NODE_ENV=test vitest run",
+        "test:unit:coverage": "pnpm run test:unit -- --coverage"
+    },
+    "dependencies": {
+        "amqplib": "^0.10.4",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@types/amqplib": "^0.10.5",
+        "@types/node": "^22.19.17",
+        "@vitest/coverage-v8": "2.1.9",
+        "cross-env": "^7.0.3",
+        "typescript": "^5.9.3",
+        "vitest": "^2.1.8"
+    }
+}

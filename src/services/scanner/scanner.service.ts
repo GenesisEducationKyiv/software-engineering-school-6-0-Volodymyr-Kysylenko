@@ -62,17 +62,19 @@ export class ScannerService {
             return;
         }
 
-        for (const subscription of staleSubscriptions) {
-            await this.deps.emailService.sendNewReleaseEmail({
-                to: subscription.email,
-                repo: subscription.repo_full_name,
-                releaseName: latestRelease.name,
-                tagName: latestRelease.tagName,
-                releaseUrl: latestRelease.htmlUrl,
-                unsubscribeToken: subscription.unsubscribe_token,
-            });
-        }
+        await this.deps.transactionRunner(async (client) => {
+            for (const subscription of staleSubscriptions) {
+                await this.deps.notificationPublisher.sendNewReleaseEmail(client, {
+                    to: subscription.email,
+                    repo: subscription.repo_full_name,
+                    releaseName: latestRelease.name,
+                    tagName: latestRelease.tagName,
+                    releaseUrl: latestRelease.htmlUrl,
+                    unsubscribeToken: subscription.unsubscribe_token,
+                });
+            }
 
-        await this.deps.subscriptionRepository.updateLastSeenTagByRepo(repoFullName, latestRelease.tagName);
+            await this.deps.subscriptionRepository.updateLastSeenTagByRepo(client, repoFullName, latestRelease.tagName);
+        });
     }
 }

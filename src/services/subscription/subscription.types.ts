@@ -1,25 +1,34 @@
+import type { PoolClient } from "pg";
+
+import type { TransactionRunner } from "../../db/transaction.js";
 import type { SubscriptionRecord, SubscriptionResponse } from "../../types/subscription.js";
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
 import type { GitHubServicePort } from "../github/github.types.js";
-import type { EmailServicePort } from "../notification/notification.types.js";
+import type { NotificationCommandPublisherPort } from "../notification/notification.types.js";
 
 export interface SubscriptionRepositoryPort {
-    create(input: {
-        email: string;
-        repoOwner: string;
-        repoName: string;
-        repoFullName: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord>;
+    create(
+        client: PoolClient,
+        input: {
+            email: string;
+            repoOwner: string;
+            repoName: string;
+            repoFullName: string;
+            confirmToken: string;
+            unsubscribeToken: string;
+            lastSeenTag: string | null;
+        },
+    ): Promise<SubscriptionRecord>;
 
-    reactivate(input: {
-        id: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord>;
+    reactivate(
+        client: PoolClient,
+        input: {
+            id: string;
+            confirmToken: string;
+            unsubscribeToken: string;
+            lastSeenTag: string | null;
+        },
+    ): Promise<SubscriptionRecord>;
 
     findByEmailAndRepo(email: string, repoFullName: string): Promise<SubscriptionRecord | null>;
     findByConfirmToken(token: string): Promise<SubscriptionRecord | null>;
@@ -51,10 +60,11 @@ export interface SubscriptionResponseMapperPort {
 }
 
 export interface SubscriptionServiceDependencies {
-    emailService: EmailServicePort;
+    notificationPublisher: NotificationCommandPublisherPort;
     githubService: GitHubServicePort;
     subscriptionRepository: SubscriptionRepositoryPort;
     tokenValidator: SubscriptionTokenValidatorPort;
     responseMapper: SubscriptionResponseMapperPort;
     logger: LoggerPort;
+    transactionRunner: TransactionRunner;
 }

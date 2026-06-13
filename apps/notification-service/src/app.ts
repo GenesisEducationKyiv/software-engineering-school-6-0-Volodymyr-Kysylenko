@@ -6,11 +6,9 @@ import { createErrorHandlerMiddleware } from "./middleware/error-handler.middlew
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { createRequestLoggerMiddleware } from "./middleware/request-logger.middleware.js";
 import { createNotificationRouter } from "./routes/notification.routes.js";
-import type { EmailServicePort } from "./services/email/email.types.js";
 import type { LoggerPort } from "./utils/logger/logger.types.js";
 
 export interface AppDependencies {
-    emailService: EmailServicePort;
     healthService: HealthServicePort;
     logger: LoggerPort;
 }
