@@ -33,4 +33,9 @@ export class SmtpEmailClient implements EmailClient {
     async send(message: EmailMessage): Promise<void> {
         await this.transporter.sendMail(message);
     }
+
+    async close(): Promise<void> {
+        this.transporter.close();
+        return Promise.resolve();
+    }
 }

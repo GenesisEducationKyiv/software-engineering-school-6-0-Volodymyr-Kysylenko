@@ -8,7 +8,7 @@ import { pool } from "./db/pool.js";
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
 // services
-import { cacheLifecycle, metricsService, scannerService } from "./services/services.module.js";
+import { cacheLifecycle, emailService, metricsService, scannerService } from "./services/services.module.js";
 // logger
 import { logger } from "./utils/logger/logger.js";
 
@@ -25,6 +25,14 @@ async function bootstrap() {
         logger.info("Redis cache connected");
     } catch (error) {
         logger.warn("Redis connection failed, cache will be disabled", error);
+    }
+
+    // Notification service connectivity check
+    try {
+        await emailService.verifyConnection();
+        logger.info("Notification service connected");
+    } catch (error) {
+        logger.warn("Notification service connectivity check failed", error);
     }
 
     // Initialize initial metrics

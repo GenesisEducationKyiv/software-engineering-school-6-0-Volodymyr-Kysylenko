@@ -20,6 +20,10 @@ export class EmailService implements EmailServicePort {
         await this.emailClient.verifyConnection();
     }
 
+    async close(): Promise<void> {
+        await this.emailClient.close();
+    }
+
     async sendConfirmationEmail(input: EmailConfirmationInput): Promise<void> {
         const message = this.templateBuilder.buildConfirmationEmail(input);
         await this.sendTracked(message, "confirmation");

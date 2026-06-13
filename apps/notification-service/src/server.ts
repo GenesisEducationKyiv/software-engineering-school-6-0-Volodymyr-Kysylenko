@@ -36,13 +36,15 @@ async function bootstrap(): Promise<void> {
     const shutdown = (signal: string): void => {
         logger.info(`Received ${signal}, shutting down gracefully`);
         server.close(() => {
-            logger.info("HTTP server closed");
-            process.exit(0);
+            void services.emailService.close().finally(() => {
+                logger.info("HTTP server closed");
+                process.exit(0);
+            });
         });
         setTimeout(() => {
             logger.error("Forced shutdown after timeout");
             process.exit(1);
-        }, 10_000).unref();
+        }, env.SHUTDOWN_TIMEOUT_MS).unref();
     };
 
     process.on("SIGINT", () => shutdown("SIGINT"));

@@ -15,12 +15,12 @@ export function createNotificationRouter(deps: NotificationRouterDeps): Router {
     const router = Router();
     const controller = createNotificationController(deps);
 
-    router.post("/notify/confirmation", (req, res) => {
-        void controller.sendConfirmation(req, res);
+    router.post("/notify/confirmation", (req, res, next) => {
+        controller.sendConfirmation(req, res).catch(next);
     });
 
-    router.post("/notify/release", (req, res) => {
-        void controller.sendRelease(req, res);
+    router.post("/notify/release", (req, res, next) => {
+        controller.sendRelease(req, res).catch(next);
     });
 
     router.get("/health", (req, res) => {

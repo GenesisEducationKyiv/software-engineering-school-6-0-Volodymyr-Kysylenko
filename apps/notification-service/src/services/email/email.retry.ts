@@ -7,6 +7,9 @@ export interface RetryConfig {
 }
 
 export class RetryingEmailClient implements EmailClient {
+    private closed = false;
+    private readonly pendingTimers = new Set<NodeJS.Timeout>();
+
     constructor(
         private readonly emailClient: EmailClient,
         private readonly config: RetryConfig,
@@ -15,6 +18,15 @@ export class RetryingEmailClient implements EmailClient {
 
     async verifyConnection(): Promise<void> {
         await this.emailClient.verifyConnection();
+    }
+
+    async close(): Promise<void> {
+        this.closed = true;
+        for (const timer of this.pendingTimers) {
+            clearTimeout(timer);
+        }
+        this.pendingTimers.clear();
+        await this.emailClient.close();
     }
 
     async send(message: EmailMessage): Promise<void> {
@@ -46,6 +58,9 @@ export class RetryingEmailClient implements EmailClient {
                         smtpCode: this.extractSmtpCode(lastError),
                     });
                     await this.delay(delayMs);
+                    if (this.closed) {
+                        throw lastError;
+                    }
                 } else {
                     this.logger.warn("Email send failed, all attempts exhausted", lastError, {
                         attempt,
@@ -75,6 +90,12 @@ export class RetryingEmailClient implements EmailClient {
     }
 
     private async delay(ms: number): Promise<void> {
-        await new Promise((resolve) => setTimeout(resolve, ms));
+        await new Promise<void>((resolve) => {
+            const timer = setTimeout(() => {
+                this.pendingTimers.delete(timer);
+                resolve();
+            }, ms);
+            this.pendingTimers.add(timer);
+        });
     }
 }

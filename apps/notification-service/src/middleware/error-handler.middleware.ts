@@ -14,7 +14,8 @@ export function createErrorHandlerMiddleware(logger: LoggerPort): ErrorRequestHa
         const status = extractHttpStatus(err);
 
         if (status < 500) {
-            res.status(status).json({ error: "Bad request" });
+            const message = err instanceof Error ? err.message : "Request error";
+            res.status(status).json({ error: message });
             return;
         }
 
