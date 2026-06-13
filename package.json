@@ -28,16 +28,16 @@
         "test:env:down": "docker compose -f docker-compose.test.yml down -v --remove-orphans",
         "test:unit": "pnpm run build:contracts && dotenv -e .env.test -- cross-env NODE_ENV=test vitest run && pnpm --filter notification-service test:unit && pnpm --filter @github-release-notifier/broker-contracts test:unit",
         "test:unit:coverage": "pnpm run test:unit --coverage",
-        "test:integration": "node scripts/run-in-test-env.mjs \"pnpm run test:integration:run\"",
+        "test:integration": "pnpm run build:contracts && node scripts/run-in-test-env.mjs \"pnpm run test:integration:run\"",
         "test:integration:run": "dotenv -e .env.integration -- cross-env NODE_ENV=test vitest run --config vitest.integration.config.ts",
         "test:integration:coverage": "node scripts/run-in-test-env.mjs \"pnpm run test:integration:run -- --coverage\"",
         "test:e2e:install": "playwright install",
-        "test:e2e": "node scripts/run-in-test-env.mjs \"pnpm run test:e2e:run\" \"pnpm exec playwright install --with-deps chromium\"",
+        "test:e2e": "pnpm run build:contracts && node scripts/run-in-test-env.mjs \"pnpm run test:e2e:run\" \"pnpm exec playwright install --with-deps chromium\"",
         "test:e2e:run": "playwright test",
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:report": "playwright show-report",
         "test:all": "pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e",
-        "test:ci": "dotenv -e .env.test -- cross-env NODE_ENV=test vitest run"
+        "test:ci": "pnpm run build:contracts && dotenv -e .env.test -- cross-env NODE_ENV=test vitest run"
     },
     "lint-staged": {
         "*.{ts,js,json,md,yml,yaml}": [
