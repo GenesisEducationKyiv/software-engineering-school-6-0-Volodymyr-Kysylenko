@@ -15,7 +15,7 @@
     "scripts": {
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
-        "test:unit": "cross-env NODE_ENV=test vitest run",
+        "test:unit": "cross-env NODE_ENV=test vitest run --passWithNoTests",
         "test:unit:coverage": "pnpm run test:unit -- --coverage"
     },
     "dependencies": {

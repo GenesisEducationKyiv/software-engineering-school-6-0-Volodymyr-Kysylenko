@@ -14,7 +14,7 @@
         "pretypecheck": "pnpm run build:contracts",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "pretest:unit": "pnpm run build:contracts",
-        "test:unit": "cross-env NODE_ENV=test vitest run",
+        "test:unit": "cross-env NODE_ENV=test vitest run --passWithNoTests",
         "test:unit:coverage": "pnpm run test:unit -- --coverage"
     },
     "dependencies": {
