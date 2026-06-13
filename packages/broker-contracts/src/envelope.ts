@@ -2,12 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import { z } from "zod";
 
-/**
- * Generic versioned message envelope shared by all broker messages.
- * `correlationId` ties together a chain of related messages/requests;
- * `causationId` points at the messageId that directly caused this message
- * (null for messages originating outside the broker, e.g. an HTTP request).
- */
 export function MessageEnvelopeSchema<TPayload extends z.ZodTypeAny>(payloadSchema: TPayload) {
     return z.object({
         messageId: z.string().uuid(),

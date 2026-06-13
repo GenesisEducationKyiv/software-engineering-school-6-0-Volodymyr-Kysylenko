@@ -16,6 +16,7 @@ import type { EmailServicePort } from "../services/email/email.types.js";
 import type { LoggerPort } from "../utils/logger/logger.types.js";
 
 export type NotificationConsumerChannel = Pick<ConfirmChannel, "consume" | "ack" | "nack" | "publish">;
+type MessageHeaders = Record<string, unknown>;
 
 export interface NotificationConsumerDeps {
     channel: NotificationConsumerChannel;
@@ -119,10 +120,11 @@ export class NotificationConsumer {
 
         const nextRetryCount = currentRetryCount + 1;
         const tier = getRetryTier(nextRetryCount);
+        const headers = this.getHeaders(message);
 
         await this.publishAndSettle(message, NOTIFICATION_RETRY_EXCHANGE, tier.routingKey, message.content, {
             ...message.properties,
-            headers: { ...message.properties.headers, [RETRY_COUNT_HEADER]: nextRetryCount },
+            headers: { ...headers, [RETRY_COUNT_HEADER]: nextRetryCount },
         });
     }
 
@@ -139,7 +141,7 @@ export class NotificationConsumer {
     ): Promise<void> {
         try {
             await publishWithConfirm(
-                this.deps.channel as ConfirmChannel,
+                this.deps.channel,
                 exchange,
                 routingKey,
                 content,
@@ -157,7 +159,16 @@ export class NotificationConsumer {
     }
 
     private getRetryCount(message: ConsumeMessage): number {
-        const value: unknown = message.properties.headers?.[RETRY_COUNT_HEADER];
+        const value = this.getHeaders(message)[RETRY_COUNT_HEADER];
         return typeof value === "number" ? value : 0;
+    }
+
+    private getHeaders(message: ConsumeMessage): MessageHeaders {
+        const headers: unknown = message.properties.headers;
+        return this.isMessageHeaders(headers) ? headers : {};
+    }
+
+    private isMessageHeaders(value: unknown): value is MessageHeaders {
+        return typeof value === "object" && value !== null && !Array.isArray(value);
     }
 }

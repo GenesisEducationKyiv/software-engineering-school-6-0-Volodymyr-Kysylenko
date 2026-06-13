@@ -1,19 +1,5 @@
 import type { Channel } from "amqplib";
 
-/**
- * RabbitMQ topology for notification commands:
- *
- *  - `notification.commands` (topic exchange) is the single publish target.
- *    Routing keys `email.confirmation` / `email.new-release` / `email.retry`
- *    all match the `email.#` binding of the main work queue.
- *  - Failed messages are republished by the consumer to
- *    `notification.commands.retry` (direct exchange) with a routing key
- *    selecting a retry tier. Each retry queue has a fixed TTL and
- *    dead-letters back to the main exchange (routing key `email.retry`)
- *    once the TTL elapses, so the message is redelivered to the main queue.
- *  - Once `MAX_DELIVERY_ATTEMPTS` is reached, the consumer republishes to the
- *    final dead-letter exchange/queue for manual inspection.
- */
 export const NOTIFICATION_EXCHANGE = "notification.commands";
 export const NOTIFICATION_RETRY_EXCHANGE = "notification.commands.retry";
 export const NOTIFICATION_EMAIL_QUEUE = "notification.email-commands";
@@ -42,10 +28,6 @@ export const RETRY_TIERS: readonly RetryTier[] = [
     { queue: "notification.email-commands.retry.3", routingKey: "retry.3", ttlMs: 300_000 },
 ];
 
-/**
- * Returns the retry tier to use for the given (1-based) retry attempt.
- * `attempt` 1 is the first retry after the initial delivery failed.
- */
 export function getRetryTier(attempt: number): RetryTier {
     const tier = RETRY_TIERS.at(attempt - 1);
     if (!tier) {
@@ -54,10 +36,6 @@ export function getRetryTier(attempt: number): RetryTier {
     return tier;
 }
 
-/**
- * Declares the full notification-email topology on the given channel.
- * Idempotent: safe to call on every (re)connect.
- */
 export async function assertNotificationTopology(channel: Channel): Promise<void> {
     await channel.assertExchange(NOTIFICATION_EXCHANGE, "topic", { durable: true });
 

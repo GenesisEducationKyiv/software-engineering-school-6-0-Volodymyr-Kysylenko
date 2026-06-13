@@ -1,13 +1,9 @@
 import type { ConfirmChannel, Options } from "amqplib";
 
-/**
- * Publishes a message on a confirm channel and waits for the broker's
- * publisher confirm, rejecting if it doesn't arrive within `timeoutMs`.
- * Used by publishers that must know whether the broker durably accepted
- * the message (e.g. the outbox worker).
- */
+export type ConfirmPublisherChannel = Pick<ConfirmChannel, "publish">;
+
 export async function publishWithConfirm(
-    channel: ConfirmChannel,
+    channel: ConfirmPublisherChannel,
     exchange: string,
     routingKey: string,
     content: Buffer,

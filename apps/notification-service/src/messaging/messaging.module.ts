@@ -54,6 +54,8 @@ export function createMessagingModule(deps: CreateMessagingModuleDependencies): 
 
     return {
         connection,
-        start: async () => connection.connect(),
+        start: async () => {
+            await connection.connect();
+        },
     };
 }
