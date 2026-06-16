@@ -10,10 +10,8 @@ export const EMAIL_CONFIRMATION_ROUTING_KEY = "email.confirmation";
 export const EMAIL_NEW_RELEASE_ROUTING_KEY = "email.new-release";
 export const EMAIL_RETRY_ROUTING_KEY = "email.retry";
 
-/** Header used to track how many delivery attempts a message has had. */
 export const RETRY_COUNT_HEADER = "x-retry-count";
 
-/** 1 initial delivery + 3 retries before a message is sent to the DLQ. */
 export const MAX_DELIVERY_ATTEMPTS = 4;
 
 export interface RetryTier {
@@ -29,11 +27,10 @@ export const RETRY_TIERS: readonly RetryTier[] = [
 ];
 
 export function getRetryTier(attempt: number): RetryTier {
-    const tier = RETRY_TIERS.at(attempt - 1);
-    if (!tier) {
+    if (attempt < 1 || attempt > RETRY_TIERS.length) {
         throw new Error(`No retry tier configured for attempt ${attempt}`);
     }
-    return tier;
+    return RETRY_TIERS[attempt - 1];
 }
 
 export async function assertNotificationTopology(channel: Channel): Promise<void> {

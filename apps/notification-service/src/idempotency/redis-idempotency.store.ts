@@ -44,4 +44,8 @@ export class RedisIdempotencyStore implements IdempotencyStorePort, IdempotencyL
         });
         return result === "OK";
     }
+
+    async release(messageId: string): Promise<void> {
+        await this.client.del(`${KEY_PREFIX}${messageId}`);
+    }
 }

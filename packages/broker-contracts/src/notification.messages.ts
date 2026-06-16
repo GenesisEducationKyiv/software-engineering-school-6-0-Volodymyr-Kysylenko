@@ -23,10 +23,12 @@ export const SendNewReleaseEmailPayloadSchema = z.object({
 
 export const SendConfirmationEmailEnvelopeSchema = MessageEnvelopeSchema(SendConfirmationEmailPayloadSchema).extend({
     type: z.literal("send-confirmation-email"),
+    version: z.literal(NOTIFICATION_CONTRACT_VERSION),
 });
 
 export const SendNewReleaseEmailEnvelopeSchema = MessageEnvelopeSchema(SendNewReleaseEmailPayloadSchema).extend({
     type: z.literal("send-new-release-email"),
+    version: z.literal(NOTIFICATION_CONTRACT_VERSION),
 });
 
 export const NotificationEmailEnvelopeSchema = z.discriminatedUnion("type", [

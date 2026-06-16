@@ -13,7 +13,11 @@ export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>)
         await client.query("COMMIT");
         return result;
     } catch (error) {
-        await client.query("ROLLBACK");
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            throw new AggregateError([error, rollbackError], "Transaction and ROLLBACK both failed");
+        }
         throw error;
     } finally {
         client.release();

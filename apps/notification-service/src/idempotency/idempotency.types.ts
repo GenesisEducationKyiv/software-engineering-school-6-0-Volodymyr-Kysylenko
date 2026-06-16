@@ -11,4 +11,5 @@ export interface IdempotencyLifecyclePort {
 
 export interface IdempotencyStorePort {
     markIfNew(messageId: string): Promise<boolean>;
+    release(messageId: string): Promise<void>;
 }

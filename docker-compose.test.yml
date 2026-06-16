@@ -8,6 +8,7 @@ services:
         env_file:
             - ./apps/notification-service/.env.test
         environment:
+            - RABBITMQ_URL=amqp://notifier:notifier@rabbitmq:5672
             - REDIS_URL=redis://redis:6379
         depends_on:
             mailhog:
@@ -38,7 +39,7 @@ services:
             - .env.test
         environment:
             - DATABASE_URL=postgresql://postgres:postgres@db:5432/releases_test
-            - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+            - RABBITMQ_URL=amqp://notifier:notifier@rabbitmq:5672
         depends_on:
             db:
                 condition: service_healthy
@@ -91,6 +92,9 @@ services:
 
     rabbitmq:
         image: rabbitmq:3.13-management-alpine
+        environment:
+            - RABBITMQ_DEFAULT_USER=notifier
+            - RABBITMQ_DEFAULT_PASS=notifier
         ports:
             - "5672:5672"
             - "15672:15672"

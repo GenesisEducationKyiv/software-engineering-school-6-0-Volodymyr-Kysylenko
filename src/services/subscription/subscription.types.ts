@@ -31,6 +31,11 @@ export interface SubscriptionRepositoryPort {
     ): Promise<SubscriptionRecord>;
 
     findByEmailAndRepo(email: string, repoFullName: string): Promise<SubscriptionRecord | null>;
+    findByEmailAndRepoForUpdate(
+        client: PoolClient,
+        email: string,
+        repoFullName: string,
+    ): Promise<SubscriptionRecord | null>;
     findByConfirmToken(token: string): Promise<SubscriptionRecord | null>;
     findByUnsubscribeToken(token: string): Promise<SubscriptionRecord | null>;
     confirmById(id: string): Promise<void>;

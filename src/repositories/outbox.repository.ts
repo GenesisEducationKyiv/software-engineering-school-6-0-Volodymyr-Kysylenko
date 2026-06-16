@@ -60,7 +60,7 @@ export class OutboxRepository implements OutboxRepositoryPort {
                 SELECT id
                 FROM notification_outbox
                 WHERE (status IN ('pending', 'failed') AND attempts < $2)
-                   OR (status = 'processing' AND claimed_at < NOW() - ($3 || ' milliseconds')::interval)
+                   OR (status = 'processing' AND claimed_at < NOW() - $3 * interval '1 millisecond')
                 ORDER BY created_at ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT $1
@@ -85,6 +85,7 @@ export class OutboxRepository implements OutboxRepositoryPort {
                 published_at = NOW(),
                 last_error = NULL
             WHERE id = $1
+              AND status = 'processing'
             `,
             [id],
         );
@@ -98,6 +99,7 @@ export class OutboxRepository implements OutboxRepositoryPort {
                 attempts = attempts + 1,
                 last_error = $2
             WHERE id = $1
+              AND status = 'processing'
             `,
             [id, error],
         );

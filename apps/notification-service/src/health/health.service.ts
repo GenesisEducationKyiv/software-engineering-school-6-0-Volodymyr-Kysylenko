@@ -18,8 +18,8 @@ export class HealthService implements HealthServicePort {
         };
     }
 
-    getReadiness(): HealthCheckResult {
-        const checks = [...this.readinessChecks.values()].map((check) => check());
+    async getReadiness(): Promise<HealthCheckResult> {
+        const checks = await Promise.all([...this.readinessChecks.values()].map(async (check) => check()));
         const status = checks.every((check) => check.status === "ok") ? "ok" : "unhealthy";
 
         return {

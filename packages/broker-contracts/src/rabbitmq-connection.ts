@@ -5,28 +5,16 @@ import type { RabbitMqConfig, RabbitMqConnectionPort } from "./rabbitmq.types.js
 
 const RECONNECT_INITIAL_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 30_000;
-/** +/-25% jitter to avoid thundering-herd reconnects across instances. */
 const RECONNECT_JITTER_RATIO = 0.25;
 
 export interface RabbitMqConnectionDependencies<TChannel extends Channel> {
     config: RabbitMqConfig;
     logger: LoggerPort;
-    /** Creates (and configures, e.g. confirm mode / prefetch) the channel used by this connection. */
     createChannel: (connection: ChannelModel) => Promise<TChannel>;
-    /** Declares exchanges/queues/bindings. Called on every (re)connect. */
     setupTopology: (channel: TChannel) => Promise<void>;
-    /** Called once the channel is ready (incl. after every reconnect), e.g. to (re)attach a consumer. */
     onChannelReady?: (channel: TChannel) => Promise<void>;
 }
 
-/**
- * Generic RabbitMQ connection/channel lifecycle: idempotent connect/disconnect
- * (concurrent callers share the in-flight promise), automatic reconnection
- * with jittered exponential backoff, and cleanup of partially-created
- * connections/channels if setup fails. Topology and channel-mode (confirm vs
- * regular, prefetch, ...) are injected so this class is reusable for any
- * queue/exchange and any role (publisher or consumer).
- */
 export class RabbitMqConnection<TChannel extends Channel = Channel> implements RabbitMqConnectionPort<TChannel> {
     private connection: ChannelModel | null = null;
     private channel: TChannel | null = null;
@@ -42,6 +30,7 @@ export class RabbitMqConnection<TChannel extends Channel = Channel> implements R
         if (this.channel) {
             return;
         }
+        this.closing = false;
         this.connectPromise ??= this.doConnect().finally(() => {
             this.connectPromise = null;
         });
@@ -53,6 +42,10 @@ export class RabbitMqConnection<TChannel extends Channel = Channel> implements R
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
+        }
+
+        if (this.connectPromise) {
+            await this.connectPromise.catch(() => undefined);
         }
 
         if (!this.connection && !this.channel) {
@@ -77,8 +70,6 @@ export class RabbitMqConnection<TChannel extends Channel = Channel> implements R
     }
 
     private async doConnect(): Promise<void> {
-        this.closing = false;
-
         let connection: ChannelModel | undefined;
         let channel: TChannel | undefined;
 
@@ -100,7 +91,9 @@ export class RabbitMqConnection<TChannel extends Channel = Channel> implements R
         } catch (error) {
             await channel?.close().catch(() => undefined);
             await connection?.close().catch(() => undefined);
-            this.scheduleReconnect();
+            if (!this.closing) {
+                this.scheduleReconnect();
+            }
             throw error;
         }
     }
@@ -120,7 +113,7 @@ export class RabbitMqConnection<TChannel extends Channel = Channel> implements R
             return;
         }
 
-        this.deps.logger.warn("RabbitMQ connection closed, scheduling reconnect", {
+        this.deps.logger.warn("RabbitMQ connection closed, scheduling reconnect", undefined, {
             delayMs: this.reconnectDelayMs,
         });
         this.scheduleReconnect();

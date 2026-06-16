@@ -105,9 +105,15 @@ async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
 }
 
 process.on("SIGINT", () => {
-    void shutdown("SIGINT");
+    shutdown("SIGINT").catch((error: unknown) => {
+        logger.error("Graceful shutdown failed", error);
+        process.exit(1);
+    });
 });
 
 process.on("SIGTERM", () => {
-    void shutdown("SIGTERM");
+    shutdown("SIGTERM").catch((error: unknown) => {
+        logger.error("Graceful shutdown failed", error);
+        process.exit(1);
+    });
 });

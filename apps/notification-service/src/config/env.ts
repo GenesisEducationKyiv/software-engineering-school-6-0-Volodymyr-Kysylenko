@@ -12,7 +12,7 @@ const EnvSchema = z
         // public URL of the main app (used to build links in emails)
         APP_BASE_URL: z.string().url().default("http://localhost:3000"),
 
-        RABBITMQ_URL: z.string().min(1).default("amqp://guest:guest@localhost:5672"),
+        RABBITMQ_URL: z.string().min(1),
         RABBITMQ_PREFETCH: z.coerce.number().int().positive().default(5),
         RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 

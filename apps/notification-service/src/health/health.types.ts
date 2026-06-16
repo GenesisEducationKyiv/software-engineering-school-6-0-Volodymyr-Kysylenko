@@ -14,9 +14,9 @@ export interface HealthCheckResult {
     checks: HealthCheck[];
 }
 
-export type HealthCheckFunction = () => HealthCheck;
+export type HealthCheckFunction = () => Promise<HealthCheck>;
 
 export interface HealthServicePort {
     getLiveness(): HealthCheckResult;
-    getReadiness(): HealthCheckResult;
+    getReadiness(): Promise<HealthCheckResult>;
 }

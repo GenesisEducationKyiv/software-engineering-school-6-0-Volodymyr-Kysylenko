@@ -89,6 +89,25 @@ export class SubscriptionRepository {
         return result.rows[0] ?? null;
     }
 
+    async findByEmailAndRepoForUpdate(
+        client: PoolClient,
+        email: string,
+        repoFullName: string,
+    ): Promise<SubscriptionRecord | null> {
+        const result = await client.query<SubscriptionRecord>(
+            `
+            SELECT *
+            FROM subscriptions
+            WHERE email = $1 AND repo_full_name = $2
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [email, repoFullName],
+        );
+
+        return result.rows[0] ?? null;
+    }
+
     async findByConfirmToken(token: string): Promise<SubscriptionRecord | null> {
         const result = await pool.query<SubscriptionRecord>(
             `

@@ -1,7 +1,7 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { HealthService } from "./health/health.service.js";
-import type { HealthCheck, HealthCheckFunction } from "./health/health.types.js";
+import type { HealthCheckFunction } from "./health/health.types.js";
 import { RedisIdempotencyStore } from "./idempotency/redis-idempotency.store.js";
 import { createMessagingModule } from "./messaging/messaging.module.js";
 import { createServicesModule } from "./services/services.module.js";
@@ -18,10 +18,8 @@ async function bootstrap(): Promise<void> {
     const services = createServicesModule();
     const version = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
 
-    let smtpVerified = false;
     try {
         await services.emailService.verifyConnection();
-        smtpVerified = true;
         logger.info("SMTP connection verified");
     } catch (error) {
         logger.warn("SMTP verification failed, continuing startup", error);
@@ -58,18 +56,18 @@ async function bootstrap(): Promise<void> {
         logger.warn("RabbitMQ connection failed, will retry in background", error);
     }
 
-    const smtpCheck: HealthCheckFunction = (): HealthCheck => ({
-        name: "smtp",
-        status: smtpVerified ? "ok" : "unhealthy",
-    });
-    const rabbitmqCheck: HealthCheckFunction = (): HealthCheck => ({
-        name: "rabbitmq",
-        status: messaging.connection.isConnected() ? "ok" : "unhealthy",
-    });
-    const redisCheck: HealthCheckFunction = (): HealthCheck => ({
-        name: "redis",
-        status: idempotencyStore.isConnected() ? "ok" : "unhealthy",
-    });
+    const smtpCheck: HealthCheckFunction = async () => {
+        try {
+            await services.emailService.verifyConnection();
+            return { name: "smtp", status: "ok" } as const;
+        } catch {
+            return { name: "smtp", status: "unhealthy" } as const;
+        }
+    };
+    const rabbitmqCheck: HealthCheckFunction = async () =>
+        Promise.resolve({ name: "rabbitmq", status: messaging.connection.isConnected() ? "ok" : "unhealthy" } as const);
+    const redisCheck: HealthCheckFunction = async () =>
+        Promise.resolve({ name: "redis", status: idempotencyStore.isConnected() ? "ok" : "unhealthy" } as const);
 
     const healthService = new HealthService(
         version,

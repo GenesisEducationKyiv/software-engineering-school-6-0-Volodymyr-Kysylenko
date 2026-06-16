@@ -44,9 +44,28 @@ export class NotificationConsumer {
             return;
         }
 
+        try {
+            await this.process(message);
+        } catch (error) {
+            this.deps.logger.error("Unexpected error processing message, requeuing", error);
+            this.deps.channel.nack(message, false, true);
+        }
+    }
+
+    private async process(message: ConsumeMessage): Promise<void> {
         const envelope = this.parseEnvelope(message);
         if (!envelope) {
             await this.publishToFinalDlq(message);
+            return;
+        }
+
+        const isNew = await this.deps.idempotencyStore.markIfNew(envelope.messageId);
+        if (!isNew) {
+            this.deps.logger.info("Duplicate delivery detected, skipping re-send", {
+                messageId: envelope.messageId,
+                type: envelope.type,
+            });
+            this.deps.channel.ack(message);
             return;
         }
 
@@ -57,16 +76,9 @@ export class NotificationConsumer {
                 messageId: envelope.messageId,
                 type: envelope.type,
             });
+            await this.deps.idempotencyStore.release(envelope.messageId).catch(() => undefined);
             await this.requeueOrDeadLetter(message);
             return;
-        }
-
-        const isNew = await this.deps.idempotencyStore.markIfNew(envelope.messageId);
-        if (!isNew) {
-            this.deps.logger.info("Duplicate delivery after successful send, skipping re-send", {
-                messageId: envelope.messageId,
-                type: envelope.type,
-            });
         }
 
         this.deps.channel.ack(message);
@@ -160,7 +172,7 @@ export class NotificationConsumer {
 
     private getRetryCount(message: ConsumeMessage): number {
         const value = this.getHeaders(message)[RETRY_COUNT_HEADER];
-        return typeof value === "number" ? value : 0;
+        return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
     }
 
     private getHeaders(message: ConsumeMessage): MessageHeaders {
