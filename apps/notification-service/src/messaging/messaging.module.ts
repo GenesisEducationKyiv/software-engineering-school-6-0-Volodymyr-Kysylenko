@@ -1,5 +1,6 @@
 import {
     assertNotificationTopology,
+    assertSagaReplyTopology,
     type RabbitMqConfig,
     RabbitMqConnection,
 } from "@github-release-notifier/broker-contracts";
@@ -38,7 +39,10 @@ export function createMessagingModule(deps: CreateMessagingModuleDependencies): 
             await channel.prefetch(deps.config.prefetch);
             return channel;
         },
-        setupTopology: assertNotificationTopology,
+        setupTopology: async (channel) => {
+            await assertNotificationTopology(channel);
+            await assertSagaReplyTopology(channel);
+        },
         onChannelReady: async (channel) => {
             const consumer = new NotificationConsumer({
                 channel,

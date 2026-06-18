@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 
 import { pool } from "../db/pool.js";
 import type { SubscriptionRecord } from "../types/subscription.js";
+import { AppError } from "../utils/errors.js";
 
 interface CountRow {
     count: string;
@@ -20,32 +21,38 @@ export class SubscriptionRepository {
             lastSeenTag: string | null;
         },
     ): Promise<SubscriptionRecord> {
-        const result = await client.query<SubscriptionRecord>(
-            `
-            INSERT INTO subscriptions (
-                email,
-                repo_owner,
-                repo_name,
-                repo_full_name,
-                confirm_token,
-                unsubscribe_token,
-                last_seen_tag
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-            `,
-            [
-                input.email,
-                input.repoOwner,
-                input.repoName,
-                input.repoFullName,
-                input.confirmToken,
-                input.unsubscribeToken,
-                input.lastSeenTag,
-            ],
-        );
-
-        return result.rows[0];
+        try {
+            const result = await client.query<SubscriptionRecord>(
+                `
+                INSERT INTO subscriptions (
+                    email,
+                    repo_owner,
+                    repo_name,
+                    repo_full_name,
+                    confirm_token,
+                    unsubscribe_token,
+                    last_seen_tag
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING *
+                `,
+                [
+                    input.email,
+                    input.repoOwner,
+                    input.repoName,
+                    input.repoFullName,
+                    input.confirmToken,
+                    input.unsubscribeToken,
+                    input.lastSeenTag,
+                ],
+            );
+            return result.rows[0];
+        } catch (error: unknown) {
+            if ((error as { code?: string }).code === "23505") {
+                throw AppError.conflict("Email already subscribed to this repository");
+            }
+            throw error;
+        }
     }
 
     async reactivate(

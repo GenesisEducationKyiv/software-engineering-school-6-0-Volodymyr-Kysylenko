@@ -1,4 +1,5 @@
 import {
+    createEnvelope,
     getRetryTier,
     MAX_DELIVERY_ATTEMPTS,
     NOTIFICATION_EMAIL_DLX,
@@ -8,6 +9,9 @@ import {
     NotificationEmailEnvelopeSchema,
     publishWithConfirm,
     RETRY_COUNT_HEADER,
+    SAGA_REPLY_EXCHANGE,
+    SAGA_REPLY_ROUTING_KEY,
+    SAGA_REPLY_VERSION,
 } from "@github-release-notifier/broker-contracts";
 import type { ConfirmChannel, ConsumeMessage, Options } from "amqplib";
 
@@ -65,6 +69,9 @@ export class NotificationConsumer {
                 messageId: envelope.messageId,
                 type: envelope.type,
             });
+            if (envelope.type === "send-confirmation-email") {
+                await this.publishSagaReply(envelope.correlationId, envelope.type, "success");
+            }
             this.deps.channel.ack(message);
             return;
         }
@@ -77,10 +84,13 @@ export class NotificationConsumer {
                 type: envelope.type,
             });
             await this.deps.idempotencyStore.release(envelope.messageId).catch(() => undefined);
-            await this.requeueOrDeadLetter(message);
+            await this.requeueOrDeadLetter(message, envelope);
             return;
         }
 
+        if (envelope.type === "send-confirmation-email") {
+            await this.publishSagaReply(envelope.correlationId, envelope.type, "success");
+        }
         this.deps.channel.ack(message);
     }
 
@@ -99,6 +109,29 @@ export class NotificationConsumer {
                 });
                 break;
         }
+    }
+
+    private async publishSagaReply(
+        correlationId: string,
+        step: string,
+        status: "success" | "failure",
+        error?: string,
+    ): Promise<void> {
+        const envelope = createEnvelope({
+            type: "saga-reply",
+            version: SAGA_REPLY_VERSION,
+            correlationId,
+            payload: { step, status, error },
+        });
+        const content = Buffer.from(JSON.stringify(envelope));
+        await publishWithConfirm(
+            this.deps.channel,
+            SAGA_REPLY_EXCHANGE,
+            SAGA_REPLY_ROUTING_KEY,
+            content,
+            { persistent: true, contentType: "application/json", messageId: envelope.messageId },
+            this.deps.publishConfirmTimeoutMs,
+        );
     }
 
     private parseEnvelope(message: ConsumeMessage): NotificationEmailEnvelope | null {
@@ -121,11 +154,23 @@ export class NotificationConsumer {
         return result.data;
     }
 
-    private async requeueOrDeadLetter(message: ConsumeMessage): Promise<void> {
+    private async requeueOrDeadLetter(message: ConsumeMessage, envelope?: NotificationEmailEnvelope): Promise<void> {
         const currentRetryCount = this.getRetryCount(message);
         const totalAttempts = currentRetryCount + 1;
 
         if (totalAttempts >= MAX_DELIVERY_ATTEMPTS) {
+            if (envelope?.type === "send-confirmation-email") {
+                await this.publishSagaReply(
+                    envelope.correlationId,
+                    envelope.type,
+                    "failure",
+                    "Max delivery attempts exceeded",
+                ).catch((err: unknown) => {
+                    this.deps.logger.warn("Failed to publish saga failure reply", err, {
+                        correlationId: envelope.correlationId,
+                    });
+                });
+            }
             await this.publishToFinalDlq(message);
             return;
         }

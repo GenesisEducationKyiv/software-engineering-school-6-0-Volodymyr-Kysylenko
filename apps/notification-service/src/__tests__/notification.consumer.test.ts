@@ -3,6 +3,8 @@ import {
     NOTIFICATION_RETRY_EXCHANGE,
     type NotificationEmailEnvelope,
     RETRY_COUNT_HEADER,
+    SAGA_REPLY_EXCHANGE,
+    SAGA_REPLY_ROUTING_KEY,
 } from "@github-release-notifier/broker-contracts";
 import type { ConsumeMessage } from "amqplib";
 import { describe, expect, it, vi } from "vitest";
@@ -113,7 +115,13 @@ describe("NotificationConsumer", () => {
             appBaseUrl: APP_BASE_URL,
         });
         expect(channel.ack).toHaveBeenCalledWith(message);
-        expect(channel.publish).not.toHaveBeenCalled();
+        expect(channel.publish).toHaveBeenCalledWith(
+            SAGA_REPLY_EXCHANGE,
+            SAGA_REPLY_ROUTING_KEY,
+            expect.any(Buffer),
+            expect.objectContaining({ contentType: "application/json" }),
+            expect.any(Function),
+        );
     });
 
     it("dispatches a send-new-release-email command and acks the message", async () => {
@@ -157,7 +165,7 @@ describe("NotificationConsumer", () => {
         expect(channel.publish).not.toHaveBeenCalled();
     });
 
-    it("skips dispatch and acks without sending when a duplicate delivery is detected", async () => {
+    it("skips dispatch but still publishes saga reply when a duplicate confirmation-email delivery is detected", async () => {
         const channel = makeChannel();
         const emailService = makeEmailService();
         const idempotencyStore = makeIdempotencyStore(false);
@@ -179,7 +187,13 @@ describe("NotificationConsumer", () => {
         expect(idempotencyStore.markIfNew).toHaveBeenCalledWith(envelope.messageId);
         expect(emailService.sendConfirmationEmail).not.toHaveBeenCalled();
         expect(channel.ack).toHaveBeenCalledWith(message);
-        expect(channel.publish).not.toHaveBeenCalled();
+        expect(channel.publish).toHaveBeenCalledWith(
+            SAGA_REPLY_EXCHANGE,
+            SAGA_REPLY_ROUTING_KEY,
+            expect.any(Buffer),
+            expect.objectContaining({ contentType: "application/json" }),
+            expect.any(Function),
+        );
         expect(logger.info).toHaveBeenCalled();
     });
 

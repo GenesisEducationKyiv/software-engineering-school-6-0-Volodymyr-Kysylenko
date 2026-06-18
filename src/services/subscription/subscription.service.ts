@@ -37,32 +37,26 @@ export class SubscriptionService {
                 throw AppError.conflict("Email already subscribed to this repository");
             }
 
-            const subscriptionRecord = await (
-                existing
-                    ? this.deps.subscriptionRepository.reactivate(client, {
-                          id: existing.id,
-                          confirmToken,
-                          unsubscribeToken,
-                          lastSeenTag: latestRelease?.tagName ?? null,
-                      })
-                    : this.deps.subscriptionRepository.create(client, {
-                          email,
-                          repoOwner: parsedRepo.owner,
-                          repoName: parsedRepo.repo,
-                          repoFullName: parsedRepo.fullName,
-                          confirmToken,
-                          unsubscribeToken,
-                          lastSeenTag: latestRelease?.tagName ?? null,
-                      })
-            ).catch((error: unknown) => {
-                if ((error as { code?: string }).code === "23505") {
-                    throw AppError.conflict("Email already subscribed to this repository");
-                }
-                throw error;
-            });
+            const subscriptionRecord = await (existing
+                ? this.deps.subscriptionRepository.reactivate(client, {
+                      id: existing.id,
+                      confirmToken,
+                      unsubscribeToken,
+                      lastSeenTag: latestRelease?.tagName ?? null,
+                  })
+                : this.deps.subscriptionRepository.create(client, {
+                      email,
+                      repoOwner: parsedRepo.owner,
+                      repoName: parsedRepo.repo,
+                      repoFullName: parsedRepo.fullName,
+                      confirmToken,
+                      unsubscribeToken,
+                      lastSeenTag: latestRelease?.tagName ?? null,
+                  }));
 
-            await this.deps.notificationPublisher.sendConfirmationEmail(client, {
-                to: subscriptionRecord.email,
+            await this.deps.confirmationSaga.start(client, {
+                subscriptionId: subscriptionRecord.id,
+                email: subscriptionRecord.email,
                 repo: subscriptionRecord.repo_full_name,
                 confirmToken: subscriptionRecord.confirm_token,
                 unsubscribeToken: subscriptionRecord.unsubscribe_token,
