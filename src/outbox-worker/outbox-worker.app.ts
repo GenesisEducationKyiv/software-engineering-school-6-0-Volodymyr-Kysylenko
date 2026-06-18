@@ -17,8 +17,18 @@ export function createOutboxWorkerApp(deps: OutboxWorkerAppDependencies): Expres
     });
 
     app.get("/health/ready", async (_req, res) => {
-        const health = await deps.readinessService.getHealth();
-        res.status(health.status === "unhealthy" ? 503 : 200).json(health);
+        try {
+            const health = await deps.readinessService.getHealth();
+            res.status(health.status === "unhealthy" ? 503 : 200).json(health);
+        } catch {
+            res.status(503).json({
+                status: "unhealthy",
+                timestamp: new Date().toISOString(),
+                uptime: Math.floor(process.uptime()),
+                version: "unknown",
+                checks: [],
+            });
+        }
     });
 
     return app;
