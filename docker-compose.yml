@@ -5,6 +5,7 @@ services:
             dockerfile: apps/notification-service/Dockerfile
         ports:
             - "4000:4000"
+            - "4001:4001"
         env_file:
             - ./apps/notification-service/.env.production
         environment:

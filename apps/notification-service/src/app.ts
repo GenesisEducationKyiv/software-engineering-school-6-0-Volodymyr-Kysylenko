@@ -5,11 +5,15 @@ import type { HealthServicePort } from "./health/health.types.js";
 import { createErrorHandlerMiddleware } from "./middleware/error-handler.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { createRequestLoggerMiddleware } from "./middleware/request-logger.middleware.js";
+import { createEmailRouter } from "./routes/email.routes.js";
 import { createNotificationRouter } from "./routes/notification.routes.js";
+import type { EmailServicePort } from "./services/email/email.types.js";
 import type { LoggerPort } from "./utils/logger/logger.types.js";
 
 export interface AppDependencies {
     healthService: HealthServicePort;
+    emailService: EmailServicePort;
+    appBaseUrl: string;
     logger: LoggerPort;
 }
 
@@ -22,6 +26,7 @@ export function createApp(deps: AppDependencies): express.Application {
     app.use(express.json({ limit: "100kb" }));
 
     app.use("/api", createNotificationRouter(deps));
+    app.use("/api/email", createEmailRouter({ emailService: deps.emailService, appBaseUrl: deps.appBaseUrl }));
 
     app.use(createErrorHandlerMiddleware(deps.logger));
 

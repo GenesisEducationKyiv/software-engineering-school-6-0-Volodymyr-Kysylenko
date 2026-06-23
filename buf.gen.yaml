@@ -1,0 +1,17 @@
+version: v2
+plugins:
+    - local: protoc-gen-ts_proto
+      out: src/grpc/buf-generated
+      opt:
+          - outputServices=grpc-js
+          - esModuleInterop=true
+          - env=node
+          - useDate=false
+    - local: protoc-gen-ts_proto
+      out: apps/notification-service/src/grpc/buf-generated
+      opt:
+          - outputServices=grpc-js
+          - esModuleInterop=true
+          - env=node
+          - useDate=false
+          - onlyTypes=false

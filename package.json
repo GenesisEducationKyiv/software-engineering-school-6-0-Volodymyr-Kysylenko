@@ -17,7 +17,10 @@
         "lint:fix": "pnpm run build:contracts && eslint . --fix",
         "migrate": "dotenv -e .env.development -- tsx src/db/migrate.ts",
         "migrate:prod": "dotenv -e .env.production -- tsx src/db/migrate.ts",
-        "proto:gen": "proto-loader-gen-types --grpcLib=@grpc/grpc-js --outDir=src/grpc/generated proto/subscription.proto --importFileExtension=.js",
+        "proto:gen": "buf generate",
+        "buf:lint": "buf lint",
+        "buf:gen": "buf generate",
+        "benchmark:notification": "tsx scripts/benchmark-notification.ts",
         "format": "prettier . --write",
         "format:check": "prettier . --check",
         "typecheck": "pnpm run build:contracts && pnpm run typecheck:monolith && pnpm run typecheck:notification",
@@ -48,6 +51,7 @@
         ]
     },
     "dependencies": {
+        "@bufbuild/protobuf": "^2.5.2",
         "@github-release-notifier/broker-contracts": "workspace:*",
         "@grpc/grpc-js": "^1.12.2",
         "@grpc/proto-loader": "^0.8.0",
@@ -66,6 +70,7 @@
         "zod": "^3.24.1"
     },
     "devDependencies": {
+        "@bufbuild/buf": "^1.71.0",
         "@eslint/js": "^9.39.4",
         "@playwright/test": "^1.60.0",
         "@types/amqplib": "^0.10.5",
@@ -87,6 +92,7 @@
         "jiti": "^2.6.1",
         "lint-staged": "^17.0.2",
         "prettier": "^3.8.3",
+        "ts-proto": "^2.11.8",
         "tsx": "^4.19.2",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.59.1",
@@ -94,6 +100,7 @@
     },
     "pnpm": {
         "onlyBuiltDependencies": [
+            "@bufbuild/buf",
             "esbuild",
             "protobufjs",
             "unrs-resolver"

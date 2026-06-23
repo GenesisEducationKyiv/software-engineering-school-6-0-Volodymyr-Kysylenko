@@ -61,7 +61,8 @@ Thumbs.db
 *.bak
 
 # Generated gRPC types
-src/grpc/generated/
+src/grpc/buf-generated
+apps/notification-service/src/grpc/buf-generated
 
 # Docker Compose override for development
 docker-compose.dev.yml
@@ -69,3 +70,5 @@ docker-compose.dev.yml
 Makefile.dev
 
 CLAUDE.md
+
+scripts/benchmark-notification.ts

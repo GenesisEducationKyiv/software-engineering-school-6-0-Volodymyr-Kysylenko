@@ -15,6 +15,7 @@ COPY packages/broker-contracts/src ./packages/broker-contracts/src
 COPY packages/broker-contracts/tsconfig.json ./packages/broker-contracts/
 COPY apps/notification-service/src ./apps/notification-service/src
 COPY apps/notification-service/tsconfig.json ./apps/notification-service/
+COPY proto ./proto
 
 RUN pnpm --filter notification-service build
 
@@ -39,10 +40,11 @@ RUN pnpm install --filter notification-service --frozen-lockfile --prod --ignore
 COPY --from=builder --chown=appuser:nodejs /app/apps/notification-service/dist ./apps/notification-service/dist
 COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/package.json ./packages/broker-contracts/package.json
 COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/dist ./packages/broker-contracts/dist
+COPY --from=builder --chown=appuser:nodejs /app/proto ./proto
 
 USER appuser
 
-EXPOSE 4000
+EXPOSE 4000 4001
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://localhost:4000/api/health').then(r=>r.ok?process.exit(0):process.exit(1))"

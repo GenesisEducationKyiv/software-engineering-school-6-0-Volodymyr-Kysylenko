@@ -18,7 +18,9 @@
         "test:unit:coverage": "pnpm run test:unit -- --coverage"
     },
     "dependencies": {
+        "@bufbuild/protobuf": "^2.5.2",
         "@github-release-notifier/broker-contracts": "workspace:*",
+        "@grpc/grpc-js": "^1.12.2",
         "amqplib": "^0.10.4",
         "dotenv": "^16.6.1",
         "express": "^4.21.2",
