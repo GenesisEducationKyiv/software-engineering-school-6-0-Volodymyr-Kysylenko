@@ -67,3 +67,5 @@ src/grpc/generated/
 docker-compose.dev.yml
 
 Makefile.dev
+
+prometheus.dev.yml

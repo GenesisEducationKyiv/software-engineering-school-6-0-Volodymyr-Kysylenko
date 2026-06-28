@@ -26,9 +26,9 @@ output.elasticsearch:
         - index: "github-notifier-logs-%{+yyyy.MM.dd}"
           when:
               or:
-                  - contains:
+                  - equals:
                         container.labels.com_docker_compose_service: "app"
-                  - contains:
+                  - equals:
                         container.labels.com_docker_compose_service: "notification-service"
         - index: "docker-logs-%{+yyyy.MM.dd}"
 

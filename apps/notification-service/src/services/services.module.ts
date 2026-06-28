@@ -1,6 +1,6 @@
 import { env } from "../config/env.js";
 import { createLogger } from "../utils/logger/logger.js";
-import { LoggerEmailMetrics } from "./email/email.metrics.js";
+import { LoggerEmailEventListener } from "./email/email.metrics.js";
 import { createEmailModule } from "./email/email.module.js";
 import type { EmailServicePort } from "./email/email.types.js";
 
@@ -27,7 +27,7 @@ export function createServicesModule(): ServicesModule {
             },
         },
         logger: createLogger("EmailService"),
-        metrics: new LoggerEmailMetrics(createLogger("EmailMetrics")),
+        listener: new LoggerEmailEventListener(createLogger("EmailEventListener")),
     });
 
     return {
