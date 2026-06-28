@@ -29,6 +29,7 @@ export type GitHubLoggerPort = Pick<LoggerPort, "debug">;
 
 export interface GitHubMetricsPort {
     recordGithubApiCall(status: "success" | "error", endpoint: "releases" | "rate_limit" | "other"): void;
+    recordGithubApiDuration(type: "releases" | "rate_limit" | "other", durationSeconds: number): void;
 }
 
 export interface GitHubServicePort {

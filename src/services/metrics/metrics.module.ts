@@ -13,17 +13,13 @@ export interface MetricsModule {
 export function createMetricsModule(deps: CreateMetricsModuleDependencies): MetricsModule {
     const factory = new MetricsFactory();
     const metricsSet = factory.createMetrics();
+    const { registry, ...recordableMetrics } = metricsSet;
 
-    const recorder = new PrometheusRecorder({
-        activeSubscriptions: metricsSet.activeSubscriptions,
-        githubApiCalls: metricsSet.githubApiCalls,
-        emailsSent: metricsSet.emailsSent,
-        scannerRuns: metricsSet.scannerRuns,
-    });
+    const recorder = new PrometheusRecorder(recordableMetrics);
 
     const initializer = new MetricsInitializer(recorder, deps.subscriptionRepository, deps.logger);
 
-    const metricsService = new MetricsService(metricsSet.registry, recorder, initializer);
+    const metricsService = new MetricsService({ metrics: async () => registry.metrics() }, recorder, initializer);
 
     return {
         metricsService,

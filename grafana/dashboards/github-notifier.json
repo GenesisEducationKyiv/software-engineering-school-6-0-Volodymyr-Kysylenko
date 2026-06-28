@@ -1,0 +1,315 @@
+{
+    "uid": "github-notifier-red",
+    "title": "GitHub Release Notifier — RED Metrics",
+    "tags": ["github-notifier", "red"],
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": { "from": "now-1h", "to": "now" },
+    "timepicker": {},
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "panels": [
+        {
+            "id": 1,
+            "title": "HTTP — Request Rate (req/s)",
+            "type": "timeseries",
+            "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum by(route) (rate(http_requests_total[5m]))",
+                    "legendFormat": "{{route}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 2,
+            "title": "HTTP — Error Rate (4xx + 5xx req/s)",
+            "type": "timeseries",
+            "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum by(route, status_code) (rate(http_requests_total{status_code=~\"4..|5..\"}[5m]))",
+                    "legendFormat": "{{route}} {{status_code}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "color": { "fixedColor": "red", "mode": "fixed" },
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 3,
+            "title": "HTTP — Request Duration Percentiles",
+            "type": "timeseries",
+            "gridPos": { "x": 0, "y": 8, "w": 16, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.50, sum by(route, le) (rate(http_request_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p50 {{route}}",
+                    "refId": "A"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.95, sum by(route, le) (rate(http_request_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p95 {{route}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.99, sum by(route, le) (rate(http_request_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p99 {{route}}",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s",
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 4,
+            "title": "HTTP — Requests In Flight",
+            "type": "stat",
+            "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum(http_requests_in_flight)",
+                    "legendFormat": "In Flight",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            { "color": "green", "value": null },
+                            { "color": "yellow", "value": 10 },
+                            { "color": "red", "value": 50 }
+                        ]
+                    }
+                }
+            },
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "background" }
+        },
+        {
+            "id": 5,
+            "title": "GitHub API — Call Rate (req/s)",
+            "type": "timeseries",
+            "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum by(type, status) (rate(github_notifier_api_calls_total[5m]))",
+                    "legendFormat": "{{type}} / {{status}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 6,
+            "title": "GitHub API — Duration p50 / p95 / p99",
+            "type": "timeseries",
+            "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.50, sum by(type, le) (rate(github_notifier_api_call_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p50 {{type}}",
+                    "refId": "A"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.95, sum by(type, le) (rate(github_notifier_api_call_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p95 {{type}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.99, sum by(type, le) (rate(github_notifier_api_call_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p99 {{type}}",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s",
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 7,
+            "title": "Email — Send Rate (req/s)",
+            "type": "timeseries",
+            "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum by(status) (rate(github_notifier_emails_sent_total[5m]))",
+                    "legendFormat": "{{status}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 8,
+            "title": "Email — Send Duration p50 / p95 / p99",
+            "type": "timeseries",
+            "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.50, sum by(type, le) (rate(github_notifier_email_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p50 {{type}}",
+                    "refId": "A"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.95, sum by(type, le) (rate(github_notifier_email_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p95 {{type}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.99, sum by(type, le) (rate(github_notifier_email_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p99 {{type}}",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s",
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 9,
+            "title": "Scanner — Run Rate (runs/s)",
+            "type": "timeseries",
+            "gridPos": { "x": 0, "y": 32, "w": 8, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "sum by(status) (rate(github_notifier_scanner_runs_total[5m]))",
+                    "legendFormat": "{{status}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "custom": { "lineWidth": 2, "fillOpacity": 10 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 10,
+            "title": "Scanner — Run Duration p50 / p95 / p99",
+            "type": "timeseries",
+            "gridPos": { "x": 8, "y": 32, "w": 8, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.50, sum by(le) (rate(github_notifier_scanner_run_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p50",
+                    "refId": "A"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.95, sum by(le) (rate(github_notifier_scanner_run_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p95",
+                    "refId": "B"
+                },
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "histogram_quantile(0.99, sum by(le) (rate(github_notifier_scanner_run_duration_seconds_bucket[5m])))",
+                    "legendFormat": "p99",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s",
+                    "custom": { "lineWidth": 2, "fillOpacity": 5 }
+                }
+            },
+            "options": { "tooltip": { "mode": "multi" } }
+        },
+        {
+            "id": 11,
+            "title": "Active Subscriptions",
+            "type": "stat",
+            "gridPos": { "x": 16, "y": 32, "w": 8, "h": 8 },
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "targets": [
+                {
+                    "datasource": { "type": "prometheus", "uid": "prometheus" },
+                    "expr": "github_notifier_active_subscriptions",
+                    "legendFormat": "Subscriptions",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [{ "color": "blue", "value": null }]
+                    }
+                }
+            },
+            "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "area", "colorMode": "background" }
+        }
+    ]
+}

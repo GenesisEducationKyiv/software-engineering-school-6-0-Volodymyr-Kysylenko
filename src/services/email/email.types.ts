@@ -62,4 +62,5 @@ export interface EmailClient {
 
 export interface EmailMetrics {
     recordEmailSent(status: EmailSendStatus): void;
+    recordEmailDuration(type: "confirmation" | "release", durationSeconds: number): void;
 }

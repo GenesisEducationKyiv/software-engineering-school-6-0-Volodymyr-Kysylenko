@@ -25,6 +25,7 @@ export interface ScannerGithubPort {
 export interface ScannerMetricsPort {
     updateActiveSubscriptions(count: number): void;
     recordScannerRun(status: "success" | "error"): void;
+    recordScannerRunDuration(durationSeconds: number): void;
 }
 
 export interface ScannerServiceDependencies {
