@@ -69,3 +69,4 @@ docker-compose.dev.yml
 Makefile.dev
 
 CLAUDE.md
+prometheus.dev.yml

@@ -1,9 +1,9 @@
 import { elapsedSeconds } from "../../utils/hrtime.js";
 import type {
-    EmailClient,
+    EmailClientPort,
     EmailConfirmationInput,
+    EmailEventListenerPort,
     EmailMessage,
-    EmailMetrics,
     EmailNewReleaseInput,
     EmailServicePort,
     EmailTemplatePort,
@@ -11,9 +11,9 @@ import type {
 
 export class EmailService implements EmailServicePort {
     constructor(
-        private readonly emailClient: EmailClient,
+        private readonly emailClient: EmailClientPort,
         private readonly templateBuilder: EmailTemplatePort,
-        private readonly metrics: EmailMetrics,
+        private readonly listener: EmailEventListenerPort,
     ) {}
 
     async verifyConnection(): Promise<void> {
@@ -38,12 +38,12 @@ export class EmailService implements EmailServicePort {
         const t0 = process.hrtime.bigint();
         try {
             await this.emailClient.send(message);
-            this.metrics.recordEmailSent("success");
+            this.listener.recordEmailSent("success");
         } catch (error) {
-            this.metrics.recordEmailSent("error");
+            this.listener.recordEmailSent("error");
             throw error;
         } finally {
-            this.metrics.recordEmailDuration(type, elapsedSeconds(t0));
+            this.listener.recordEmailDuration(type, elapsedSeconds(t0));
         }
     }
 }

@@ -1,8 +1,11 @@
 import type { SubscriptionRecord, SubscriptionResponse } from "../../types/subscription.js";
 import { generateToken } from "../../utils/crypto.js";
 import { AppError } from "../../utils/errors.js";
+import { PG_UNIQUE_VIOLATION } from "../../utils/pg-errors.js";
 import { parseRepo, validateEmail } from "../../utils/validators.js";
 import type { SubscriptionServiceDependencies } from "./subscription.types.js";
+
+const ERR_ALREADY_SUBSCRIBED = "Email already subscribed to this repository";
 
 export class SubscriptionService {
     constructor(private readonly deps: SubscriptionServiceDependencies) {}
@@ -34,25 +37,32 @@ export class SubscriptionService {
                     email,
                     repo: parsedRepo.fullName,
                 });
-                throw AppError.conflict("Email already subscribed to this repository");
+                throw AppError.conflict(ERR_ALREADY_SUBSCRIBED);
             }
 
-            const subscriptionRecord = await (existing
-                ? this.deps.subscriptionRepository.reactivate(client, {
-                      id: existing.id,
-                      confirmToken,
-                      unsubscribeToken,
-                      lastSeenTag: latestRelease?.tagName ?? null,
-                  })
-                : this.deps.subscriptionRepository.create(client, {
-                      email,
-                      repoOwner: parsedRepo.owner,
-                      repoName: parsedRepo.repo,
-                      repoFullName: parsedRepo.fullName,
-                      confirmToken,
-                      unsubscribeToken,
-                      lastSeenTag: latestRelease?.tagName ?? null,
-                  }));
+            const subscriptionRecord = await (
+                existing
+                    ? this.deps.subscriptionRepository.reactivate(client, {
+                          id: existing.id,
+                          confirmToken,
+                          unsubscribeToken,
+                          lastSeenTag: latestRelease?.tagName ?? null,
+                      })
+                    : this.deps.subscriptionRepository.create(client, {
+                          email,
+                          repoOwner: parsedRepo.owner,
+                          repoName: parsedRepo.repo,
+                          repoFullName: parsedRepo.fullName,
+                          confirmToken,
+                          unsubscribeToken,
+                          lastSeenTag: latestRelease?.tagName ?? null,
+                      })
+            ).catch((error: unknown) => {
+                if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) {
+                    throw AppError.conflict(ERR_ALREADY_SUBSCRIBED);
+                }
+                throw error;
+            });
 
             await this.deps.confirmationSaga.start(client, {
                 subscriptionId: subscriptionRecord.id,

@@ -1,7 +1,7 @@
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
-import type { EmailMetrics } from "./email.types.js";
+import type { EmailEventListenerPort } from "./email.types.js";
 
-export class LoggerEmailMetrics implements EmailMetrics {
+export class LoggerEmailEventListener implements EmailEventListenerPort {
     constructor(private readonly logger: Pick<LoggerPort, "info" | "warn" | "debug">) {}
 
     recordEmailSent(status: "success" | "error"): void {
