@@ -118,7 +118,7 @@ services:
         profiles: ["elk"]
         environment:
             - discovery.type=single-node
-            - xpack.security.enabled=false
+            - xpack.security.enabled=false # dev-only: never use in production
             - ES_JAVA_OPTS=-Xms512m -Xmx512m
             - cluster.name=github-notifier-cluster
         ports:

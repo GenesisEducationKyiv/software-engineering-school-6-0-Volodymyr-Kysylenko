@@ -1,3 +1,8 @@
+-include .env
+export
+
+COMPOSE_PROJECT_NAME ?= $(shell basename $(CURDIR) | tr '[:upper:]' '[:lower:]')
+
 .PHONY: prod-up
 prod-up:
 	docker compose -f docker-compose.yml up -d --build
@@ -20,7 +25,7 @@ health:
 
 .PHONY: backup
 backup:
-	docker compose -f docker-compose.yml exec db pg_dump -U postgres releases > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	docker compose -f docker-compose.yml exec db pg_dump -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-releases} > backup_$(shell date +%Y%m%d_%H%M%S).sql
 
 .PHONY: elk-up
 elk-up:
@@ -28,13 +33,12 @@ elk-up:
 
 .PHONY: elk-down
 elk-down:
-	docker compose -f docker-compose.yml stop elasticsearch kibana filebeat
-	docker compose -f docker-compose.yml rm -f elasticsearch kibana filebeat
+	docker compose -f docker-compose.yml --profile elk down
 
 .PHONY: elk-init
 elk-init:
 	docker run --rm \
-		--network github-release-notifier_app-network \
+		--network $(COMPOSE_PROJECT_NAME)_app-network \
 		-v "$(CURDIR)/elasticsearch:/scripts:ro" \
 		-e ELASTICSEARCH_URL=http://elasticsearch:9200 \
 		-e KIBANA_URL=http://kibana:5601 \

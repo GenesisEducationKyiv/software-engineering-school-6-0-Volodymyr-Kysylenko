@@ -54,4 +54,4 @@ else
   echo ""
 fi
 
-echo "Done. Open Kibana at http://localhost:5601"
+echo "Done. Open Kibana at $KIBANA"

@@ -47,7 +47,7 @@ function resolveArgs(errorOrMeta?: unknown, meta?: Record<string, unknown>): Rec
 
 export type { LoggerPort as Logger };
 
-export class ConsoleLogger implements LoggerPort {
+export class AppLogger implements LoggerPort {
     private readonly winston;
 
     constructor(context = "App") {
@@ -82,8 +82,8 @@ export class ConsoleLogger implements LoggerPort {
     }
 }
 
-export function createLogger(context: string): ConsoleLogger {
-    return new ConsoleLogger(context);
+export function createLogger(context: string): AppLogger {
+    return new AppLogger(context);
 }
 
-export const logger = new ConsoleLogger();
+export const logger = new AppLogger();
