@@ -36,7 +36,9 @@ COPY package.json ./
 COPY pnpm-lock.yaml* ./
 
 # Install only production dependencies
-RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --prod; else pnpm install --prod; fi && \
+# --ignore-scripts skips lifecycle hooks (prepare → husky) that require
+# devDependencies not present in a production install.
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts && \
     pnpm store prune && \
     rm -rf ~/.pnpm-store
 

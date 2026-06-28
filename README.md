@@ -27,6 +27,8 @@
 - PostgreSQL
 - Docker
 - Redis
+- Winston (структуроване логування)
+- Elasticsearch + Kibana + Filebeat (ELK-стек)
 
 ## Що реалізовано
 
@@ -49,6 +51,8 @@
 - Dockerfile і docker-compose для повного запуску
 - сторінки підписки, підтвердження підписки, відписки, перегляду підписок
 - деплой на VPS (Ubuntu + Nginx як reverse proxy)
+- структуроване JSON-логування через Winston з полями `service`, `version`, `environment`, `context`, `hostname`
+- конвеєр логів: Filebeat → Elasticsearch → Kibana (опціональний профіль `elk`)
 
 ## Структура
 
@@ -243,6 +247,21 @@ make health               # curl http://localhost:3000/api/health
 # Бекап DB
 make backup
 ```
+
+## ELK-стек (логування)
+
+Конвеєр логів запускається окремим Docker Compose профілем і не впливає на основний стек.
+
+```bash
+make elk-up     # піднімає Elasticsearch :9200, Kibana :5601, Filebeat
+make elk-init   # одноразово: застосовує index template + створює Data View в Kibana
+make elk-down   # зупинка
+make elk-logs   # логи ELK-сервісів
+```
+
+Після `elk-init` відкрити **http://localhost:5601 → Discover → "GitHub Notifier Logs"**.
+
+Кожен лог містить поля `level`, `message`, `service`, `version`, `environment`, `context`, `hostname` та HTTP-специфічні поля (`requestId`, `method`, `url`, `statusCode`, `duration`). Помилки серіалізуються в `errorMessage`, `errorName`, `stack`.
 
 ## Docker конфіг
 
