@@ -1,0 +1,62 @@
+# Dependencies
+node_modules
+
+# Source control
+.git
+.gitignore
+
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Environment files
+.env*
+!.env.example
+
+# Test files
+coverage
+**/*.test.*
+**/__tests__
+*.spec.*
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development files
+docker-compose.dev.yml
+Makefile
+docker-scripts.ps1
+
+# CI/CD files
+.github/
+
+# Backup files
+*.backup
+*.bak
+*.sql
+
+
+# Generated gRPC types
+src/grpc/generated/

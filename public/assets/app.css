@@ -1,0 +1,230 @@
+@import url("https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400..700;1,400..700&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+
+:root {
+    --bg: #0b1020;
+    --body-bg: radial-gradient(circle at top, rgba(79, 140, 255, 0.18), transparent 30%), var(--bg);
+    --panel: #121a30;
+    --panel-border: #3e4c6f;
+    --text: #e8eefc;
+    --muted: #9fb0d3;
+    --primary: #1c2a5a;
+    --primary-hover: rgb(25, 58, 120);
+    --success-bg: #12311f;
+    --success-border: #2f8f4e;
+    --success-text: #baf3c8;
+    --error-bg: #35181b;
+    --error-border: #b54552;
+    --error-text: #ffc5cb;
+    --input-bg: #0f172b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Open Sans", Arial, sans-serif;
+    background: var(--body-bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.page {
+    width: 100%;
+    max-width: 520px;
+}
+
+.card {
+    background: rgba(18, 26, 48, 0.96);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+}
+
+.title {
+    margin: 0 0 12px;
+    font-size: 32px;
+    line-height: 1.15;
+    text-align: center;
+}
+
+.subtitle {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.form {
+    display: grid;
+    gap: 18px;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+.label {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.input::placeholder {
+    color: #7183ab;
+}
+
+.input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.15);
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--panel);
+    border-radius: 12px;
+    background: var(--primary);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.04s ease;
+    text-decoration: none;
+    text-align: center;
+}
+
+.button--secondary {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+}
+
+.button:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.message {
+    display: none;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    border: 1px solid transparent;
+}
+
+.message--success {
+    display: block;
+    background: var(--success-bg);
+    border-color: var(--success-border);
+    color: var(--success-text);
+}
+
+.message--error {
+    display: block;
+    background: var(--error-bg);
+    border-color: var(--error-border);
+    color: var(--error-text);
+}
+
+.footer {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.example {
+    color: #c8d8ff;
+    font-weight: bold;
+}
+
+.subscriptions-list {
+    margin-top: 18px;
+    display: none;
+}
+
+.subscription-item {
+    background: var(--input-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.subscription-repo {
+    font-weight: 700;
+    color: var(--panel-border);
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.subscription-repo a {
+    color: inherit;
+}
+
+.subscription-status {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.subscription-status--confirmed {
+    color: var(--success-text);
+}
+
+.no-subscriptions {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 32px 16px;
+}

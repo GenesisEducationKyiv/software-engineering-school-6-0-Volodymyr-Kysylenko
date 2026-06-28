@@ -1,0 +1,55 @@
+{
+    "index_patterns": ["github-notifier-logs-*", "docker-logs-*"],
+    "priority": 100,
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
+            "index.refresh_interval": "5s"
+        },
+        "mappings": {
+            "dynamic_templates": [
+                {
+                    "strings_as_keywords": {
+                        "match_mapping_type": "string",
+                        "mapping": { "type": "keyword" }
+                    }
+                }
+            ],
+            "properties": {
+                "@timestamp": { "type": "date" },
+                "timestamp": { "type": "date" },
+                "level": { "type": "keyword" },
+                "message": { "type": "text", "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } } },
+                "service": { "type": "keyword" },
+                "version": { "type": "keyword" },
+                "environment": { "type": "keyword" },
+                "context": { "type": "keyword" },
+                "hostname": { "type": "keyword" },
+                "requestId": { "type": "keyword" },
+                "method": { "type": "keyword" },
+                "url": { "type": "keyword", "ignore_above": 2048 },
+                "statusCode": { "type": "integer" },
+                "duration": { "type": "long" },
+                "ip": { "type": "ip", "ignore_malformed": true },
+                "userAgent": { "type": "text", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
+                "contentLength": { "type": "long" },
+                "errorMessage": { "type": "text" },
+                "errorName": { "type": "keyword" },
+                "stack": { "type": "text" },
+                "stream": { "type": "keyword" },
+                "container": {
+                    "properties": {
+                        "name": { "type": "keyword" },
+                        "id": { "type": "keyword" },
+                        "image": {
+                            "properties": {
+                                "name": { "type": "keyword" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

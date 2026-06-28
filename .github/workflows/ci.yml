@@ -1,0 +1,141 @@
+name: CI
+
+on:
+    push:
+        branches: ["**"]
+
+    pull_request:
+        branches: [main]
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+    quality:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  version: 10.0.0
+                  run_install: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 22.x
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Generate gRPC types
+              run: pnpm run proto:gen
+
+            - name: Check formatting
+              run: pnpm run format:check
+
+            - name: Run linter
+              run: pnpm run lint
+
+            - name: Type check
+              run: pnpm run typecheck
+
+            - name: Build project
+              run: pnpm run build
+
+    test-unit:
+        runs-on: ubuntu-latest
+        needs: quality
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  version: 10.0.0
+                  run_install: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 22.x
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Generate gRPC types
+              run: pnpm run proto:gen
+
+            - name: Run unit tests
+              run: pnpm run test:unit
+
+    test-integration:
+        runs-on: ubuntu-latest
+        needs: quality
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  version: 10.0.0
+                  run_install: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 22.x
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Generate gRPC types
+              run: pnpm run proto:gen
+
+            - name: Run integration tests
+              run: pnpm run test:integration
+
+    test-e2e:
+        runs-on: ubuntu-latest
+        needs: test-integration
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v6
+              with:
+                  version: 10.0.0
+                  run_install: false
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 22.x
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Generate gRPC types
+              run: pnpm run proto:gen
+
+            - name: Run E2E tests
+              run: pnpm run test:e2e
