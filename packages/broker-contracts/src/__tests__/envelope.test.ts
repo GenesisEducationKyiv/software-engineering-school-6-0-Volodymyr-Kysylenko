@@ -63,7 +63,7 @@ describe("createEnvelope", () => {
 
     it("produces an ISO timestamp", () => {
         const envelope = createEnvelope({ type: "x", version: 1, payload: {} });
-        expect(() => new Date(envelope.timestamp).toISOString()).not.toThrow();
+        expect(envelope.timestamp).toMatch(/Z|[+-]\d{2}:\d{2}$/);
     });
 
     it.each([0, -1, 1.5, NaN])("throws for invalid version %s", (version) => {

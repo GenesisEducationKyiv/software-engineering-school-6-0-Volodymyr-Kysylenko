@@ -51,6 +51,9 @@ export class GitHubService implements GitHubServicePort {
                 `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}`,
                 { headers: this.buildHeaders() },
             );
+        } catch (err) {
+            this.deps.metrics.recordGithubApiCall("error", "other");
+            throw err;
         } finally {
             this.deps.metrics.recordGithubApiDuration("other", elapsedSeconds(t0));
         }
@@ -97,6 +100,9 @@ export class GitHubService implements GitHubServicePort {
                 `${GITHUB_API_BASE_URL}/repos/${input.owner}/${input.repo}/releases/latest`,
                 { headers: this.buildHeaders() },
             );
+        } catch (err) {
+            this.deps.metrics.recordGithubApiCall("error", "releases");
+            throw err;
         } finally {
             this.deps.metrics.recordGithubApiDuration("releases", elapsedSeconds(t0));
         }

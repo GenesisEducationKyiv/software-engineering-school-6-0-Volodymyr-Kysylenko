@@ -72,3 +72,5 @@ Makefile.dev
 CLAUDE.md
 
 scripts/benchmark-notification.ts
+
+prometheus.dev.yml

@@ -18,7 +18,6 @@ async function bootstrap(): Promise<void> {
 
     const services = createServicesModule();
     const version = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
-
     try {
         await services.emailService.verifyConnection();
         logger.info("SMTP connection verified");

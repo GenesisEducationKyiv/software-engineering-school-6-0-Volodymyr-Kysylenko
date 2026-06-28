@@ -3,9 +3,10 @@ services:
         build:
             context: .
             dockerfile: apps/notification-service/Dockerfile
-        ports:
-            - "4000:4000"
-            - "4001:4001"
+        # Don't expose ports in production - only internal access
+        # ports:
+        #   - "4000:4000"
+        #   - "4001:4001"
         env_file:
             - ./apps/notification-service/.env.production
         environment:
