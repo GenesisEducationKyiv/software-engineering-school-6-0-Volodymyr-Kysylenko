@@ -78,16 +78,15 @@ async function bootstrap(): Promise<void> {
         ]),
     );
 
-    let grpcServer: Awaited<ReturnType<typeof startNotificationGrpcServer>> | undefined;
-    try {
-        grpcServer = await startNotificationGrpcServer(env.GRPC_PORT, {
+    const grpcServer = await startNotificationGrpcServer(
+        env.GRPC_PORT,
+        {
             emailService: services.emailService,
             logger: createLogger("GrpcServer"),
             appBaseUrl: env.APP_BASE_URL,
-        });
-    } catch (error) {
-        logger.warn("gRPC server failed to start", error);
-    }
+        },
+        env.GRPC_HOST,
+    );
 
     const app = createApp({
         healthService,
@@ -102,7 +101,7 @@ async function bootstrap(): Promise<void> {
 
     const shutdown = (signal: string): void => {
         logger.info(`Received ${signal}, shutting down gracefully`);
-        grpcServer?.forceShutdown();
+        grpcServer.forceShutdown();
         server.close(() => {
             void Promise.all([
                 services.emailService.close(),

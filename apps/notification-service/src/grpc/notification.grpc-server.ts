@@ -20,15 +20,16 @@ export function createNotificationGrpcServer(deps: NotificationGrpcServerDeps): 
 export async function startNotificationGrpcServer(
     port: number,
     deps: NotificationGrpcServerDeps,
+    host = "0.0.0.0",
 ): Promise<grpc.Server> {
     return new Promise((resolve, reject) => {
         const server = createNotificationGrpcServer(deps);
-        server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (error, boundPort) => {
+        server.bindAsync(`${host}:${port}`, grpc.ServerCredentials.createInsecure(), (error, boundPort) => {
             if (error) {
                 reject(error);
                 return;
             }
-            deps.logger.info(`Notification gRPC server started on port ${boundPort}`);
+            deps.logger.info(`Notification gRPC server started on ${host}:${boundPort}`);
             resolve(server);
         });
     });

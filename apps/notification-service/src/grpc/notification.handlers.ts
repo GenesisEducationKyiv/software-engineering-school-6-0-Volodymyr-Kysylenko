@@ -15,12 +15,28 @@ function replyError(callback: grpc.sendUnaryData<{ success: boolean }>, logger: 
     callback({ code: grpc.status.INTERNAL, message: "Internal server error" });
 }
 
+function validateRequiredFields(
+    fields: Record<string, string>,
+    callback: grpc.sendUnaryData<{ success: boolean }>,
+): boolean {
+    const missing = Object.entries(fields)
+        .filter(([, v]) => !v)
+        .map(([k]) => k);
+
+    if (missing.length > 0) {
+        callback({ code: grpc.status.INVALID_ARGUMENT, message: `Missing required fields: ${missing.join(", ")}` });
+        return false;
+    }
+    return true;
+}
+
 export function createNotificationHandlers(deps: NotificationHandlersDeps): NotificationServiceServer {
     const { emailService, logger, appBaseUrl } = deps;
 
     return {
         sendConfirmationEmail(call, callback) {
             const { email, repo, confirmToken, unsubscribeToken } = call.request;
+            if (!validateRequiredFields({ email, repo, confirmToken, unsubscribeToken }, callback)) return;
             emailService
                 .sendConfirmationEmail({ to: email, repo, confirmToken, unsubscribeToken, appBaseUrl })
                 .then(() => callback(null, { success: true }))
@@ -29,6 +45,7 @@ export function createNotificationHandlers(deps: NotificationHandlersDeps): Noti
 
         sendNewReleaseEmail(call, callback) {
             const { email, repo, releaseName, tagName, releaseUrl, unsubscribeToken } = call.request;
+            if (!validateRequiredFields({ email, repo, tagName, releaseUrl, unsubscribeToken }, callback)) return;
             emailService
                 .sendNewReleaseEmail({
                     to: email,

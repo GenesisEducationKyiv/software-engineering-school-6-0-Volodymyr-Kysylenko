@@ -13,17 +13,34 @@ import {
     type UnsubscribeResponse,
 } from "./buf-generated/subscription.js";
 
-function resolveGrpcResponse<T>(
-    response: T | undefined,
-    resolve: (value: T) => void,
-    reject: (reason?: unknown) => void,
-): void {
-    if (!response) {
-        reject(new Error("gRPC response is empty"));
-        return;
-    }
+const GRPC_DEADLINE_MS = 5_000;
 
-    resolve(response);
+type UnaryMethod<Req, Res> = (
+    request: Req,
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: (error: grpc.ServiceError | null, response: Res | undefined) => void,
+) => grpc.ClientUnaryCall;
+
+async function unaryCall<Req, Res>(method: UnaryMethod<Req, Res>, request: Req): Promise<Res> {
+    return new Promise((resolve, reject) => {
+        method(
+            request,
+            new grpc.Metadata(),
+            { deadline: new Date(Date.now() + GRPC_DEADLINE_MS) },
+            (error, response) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                if (!response) {
+                    reject(new Error("gRPC response is empty"));
+                    return;
+                }
+                resolve(response);
+            },
+        );
+    });
 }
 
 export function createGrpcClient(serverAddress = `localhost:${env.GRPC_PORT}`): SubscriptionServiceClient {
@@ -37,57 +54,19 @@ export function getGrpcClient(): SubscriptionServiceClient {
 }
 
 export async function subscribeViaGrpc(email: string, repo: string): Promise<SubscribeResponse> {
-    return new Promise((resolve, reject) => {
-        const request: SubscribeRequest = { email, repo };
-
-        grpcClient.subscribe(request, (error, response) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolveGrpcResponse(response, resolve, reject);
-        });
-    });
+    return unaryCall<SubscribeRequest, SubscribeResponse>(grpcClient.subscribe.bind(grpcClient), { email, repo });
 }
 
 export async function confirmViaGrpc(token: string): Promise<ConfirmResponse> {
-    return new Promise((resolve, reject) => {
-        const request: ConfirmRequest = { token };
-
-        grpcClient.confirm(request, (error, response) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolveGrpcResponse(response, resolve, reject);
-        });
-    });
+    return unaryCall<ConfirmRequest, ConfirmResponse>(grpcClient.confirm.bind(grpcClient), { token });
 }
 
 export async function unsubscribeViaGrpc(token: string): Promise<UnsubscribeResponse> {
-    return new Promise((resolve, reject) => {
-        const request: UnsubscribeRequest = { token };
-
-        grpcClient.unsubscribe(request, (error, response) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolveGrpcResponse(response, resolve, reject);
-        });
-    });
+    return unaryCall<UnsubscribeRequest, UnsubscribeResponse>(grpcClient.unsubscribe.bind(grpcClient), { token });
 }
 
 export async function getSubscriptionsViaGrpc(email: string): Promise<GetSubscriptionsResponse> {
-    return new Promise((resolve, reject) => {
-        const request: GetSubscriptionsRequest = { email };
-
-        grpcClient.getSubscriptions(request, (error, response) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolveGrpcResponse(response, resolve, reject);
-        });
+    return unaryCall<GetSubscriptionsRequest, GetSubscriptionsResponse>(grpcClient.getSubscriptions.bind(grpcClient), {
+        email,
     });
 }

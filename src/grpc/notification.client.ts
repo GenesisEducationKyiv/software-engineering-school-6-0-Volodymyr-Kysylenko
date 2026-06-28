@@ -8,18 +8,33 @@ import {
     type SendNewReleaseEmailResponse,
 } from "./buf-generated/notification.js";
 
-async function callUnary<Req, Res>(
-    method: (req: Req, callback: (err: grpc.ServiceError | null, res: Res) => void) => grpc.ClientUnaryCall,
+const GRPC_DEADLINE_MS = 5_000;
+
+type UnaryMethod<Req, Res> = (
     request: Req,
-): Promise<Res> {
+    metadata: grpc.Metadata,
+    options: grpc.CallOptions,
+    callback: (error: grpc.ServiceError | null, response: Res | undefined) => void,
+) => grpc.ClientUnaryCall;
+
+async function callUnary<Req, Res>(method: UnaryMethod<Req, Res>, request: Req): Promise<Res> {
     return new Promise((resolve, reject) => {
-        method(request, (error, response) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-            resolve(response);
-        });
+        method(
+            request,
+            new grpc.Metadata(),
+            { deadline: new Date(Date.now() + GRPC_DEADLINE_MS) },
+            (error, response) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+                if (!response) {
+                    reject(new Error("gRPC response is empty"));
+                    return;
+                }
+                resolve(response);
+            },
+        );
     });
 }
 

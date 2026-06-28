@@ -5,11 +5,11 @@
     "type": "module",
     "packageManager": "pnpm@10.0.0",
     "scripts": {
-        "build:contracts": "pnpm --filter @github-release-notifier/broker-contracts build",
+        "build:contracts": "pnpm --filter @github-release-notifier/broker-contracts build && pnpm run proto:gen",
         "dev": "pnpm run build:contracts && dotenv -e .env.development -- tsx watch src/server.ts",
         "dev:prod": "pnpm run build:contracts && dotenv -e .env.production -- tsx watch src/server.ts",
         "dev:outbox-worker": "pnpm run build:contracts && dotenv -e .env.development -- tsx watch src/outbox-worker.ts",
-        "build": "pnpm run build:contracts && pnpm run proto:gen && tsc -p tsconfig.json && pnpm --filter notification-service build",
+        "build": "pnpm run build:contracts && tsc -p tsconfig.json && pnpm --filter notification-service build",
         "start": "dotenv -e .env.production -- node dist/server.js",
         "start:dev": "dotenv -e .env.development -- node dist/server.js",
         "start:outbox-worker": "dotenv -e .env.production -- node dist/outbox-worker.js",
