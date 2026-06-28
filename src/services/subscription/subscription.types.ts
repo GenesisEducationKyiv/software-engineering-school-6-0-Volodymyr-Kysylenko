@@ -1,10 +1,10 @@
 import type { PoolClient } from "pg";
 
 import type { TransactionRunner } from "../../db/transaction.js";
+import type { SubscriptionConfirmationSagaPort } from "../../sagas/subscription-confirmation.saga.js";
 import type { SubscriptionRecord, SubscriptionResponse } from "../../types/subscription.js";
 import type { LoggerPort } from "../../utils/logger/logger.types.js";
 import type { GitHubServicePort } from "../github/github.types.js";
-import type { NotificationCommandPublisherPort } from "../notification/notification.types.js";
 
 export interface SubscriptionRepositoryPort {
     create(
@@ -65,7 +65,7 @@ export interface SubscriptionResponseMapperPort {
 }
 
 export interface SubscriptionServiceDependencies {
-    notificationPublisher: NotificationCommandPublisherPort;
+    confirmationSaga: SubscriptionConfirmationSagaPort;
     githubService: GitHubServicePort;
     subscriptionRepository: SubscriptionRepositoryPort;
     tokenValidator: SubscriptionTokenValidatorPort;

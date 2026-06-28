@@ -7,12 +7,20 @@ import { runMigrations } from "./db/migrate.js";
 import { pool } from "./db/pool.js";
 // gRPC server
 import { startGrpcServer } from "./grpc/server.js";
+// saga
+import { createSagaModule } from "./sagas/saga.module.js";
 // services
-import { cacheLifecycle, metricsService, scannerService } from "./services/services.module.js";
+import { cacheLifecycle, confirmationSaga, metricsService, scannerService } from "./services/services.module.js";
 // logger
 import { logger } from "./utils/logger/logger.js";
 
 const { NODE_ENV, PORT, GRPC_PORT, SCAN_INTERVAL_MS } = env;
+
+const sagaModule = createSagaModule({
+    config: { url: env.RABBITMQ_URL },
+    saga: confirmationSaga,
+    logger,
+});
 
 async function bootstrap() {
     logger.info(NODE_ENV === "production" ? "Running in production mode" : "Running in development mode");
@@ -66,11 +74,19 @@ async function bootstrap() {
         .catch((error: unknown) => {
             logger.error("Initial scanner run failed", error);
         });
+
+    // Start saga reply consumer
+    try {
+        await sagaModule.start();
+        logger.info("Saga reply consumer started");
+    } catch (error) {
+        logger.warn("Saga reply consumer connection failed, will retry in background", error);
+    }
 }
 
 void bootstrap().catch(async (error: unknown) => {
     logger.error("Application bootstrap failed", error);
-    await cacheLifecycle.disconnect();
+    await Promise.all([cacheLifecycle.disconnect(), sagaModule.stop()]);
     await pool.end();
     process.exit(1);
 });
@@ -78,7 +94,7 @@ void bootstrap().catch(async (error: unknown) => {
 async function shutdown(signal: "SIGINT" | "SIGTERM"): Promise<void> {
     logger.info(`Received ${signal}, shutting down gracefully...`);
 
-    await cacheLifecycle.disconnect();
+    await Promise.all([cacheLifecycle.disconnect(), sagaModule.stop()]);
     await pool.end();
 
     process.exit(0);

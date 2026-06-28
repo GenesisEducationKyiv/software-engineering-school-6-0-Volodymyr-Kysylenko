@@ -5,6 +5,8 @@ import { databaseHealthCheckAdapter } from "../db/adapters/database-health-check
 import { withTransaction } from "../db/transaction.js";
 import { outboxRepository } from "../repositories/outbox.repository.js";
 import { subscriptionRepository } from "../repositories/subscription.repository.js";
+import { sagaRepository } from "../sagas/saga.repository.js";
+import { SubscriptionConfirmationSaga } from "../sagas/subscription-confirmation.saga.js";
 import { createLogger } from "../utils/logger/logger.js";
 import { createCacheModule } from "./cache/cache.module.js";
 import { RedisClientAdapter } from "./cache/cache.redis-client.js";
@@ -34,6 +36,12 @@ const healthModule = createHealthModule({
 
 const notificationModule = createNotificationModule(outboxRepository);
 
+const confirmationSaga = new SubscriptionConfirmationSaga({
+    sagaRepository,
+    outboxRepository,
+    logger: createLogger("SubscriptionConfirmationSaga"),
+});
+
 const cacheConfig: CacheConfig = {
     enabled: env.CACHE_ENABLED,
     redisUrl: env.REDIS_URL,
@@ -57,7 +65,7 @@ const githubModule = createGithubModule({
 });
 
 const subscriptionModule = createSubscriptionModule({
-    notificationPublisher: notificationModule.notificationPublisher,
+    confirmationSaga,
     githubService: githubModule.githubService,
     subscriptionRepository,
     logger: createLogger("SubscriptionService"),
@@ -72,6 +80,7 @@ const scannerModule = createScannerModule({
     transactionRunner: withTransaction,
 });
 
+export { confirmationSaga };
 export const notificationPublisher = notificationModule.notificationPublisher;
 export const githubService = githubModule.githubService;
 export const healthService = healthModule.healthService;

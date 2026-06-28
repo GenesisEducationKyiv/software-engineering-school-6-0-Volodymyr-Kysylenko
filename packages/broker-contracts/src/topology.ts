@@ -1,5 +1,20 @@
 import type { Channel } from "amqplib";
 
+export const SAGA_REPLY_EXCHANGE = "saga.replies";
+export const SAGA_REPLY_QUEUE = "saga.replies.main";
+export const SAGA_REPLY_ROUTING_KEY = "reply.confirmation";
+export const SAGA_REPLY_DLX = "saga.replies.dlx";
+export const SAGA_REPLY_DLQ = "saga.replies.dlq";
+
+export async function assertSagaReplyTopology(channel: Channel): Promise<void> {
+    await channel.assertExchange(SAGA_REPLY_EXCHANGE, "direct", { durable: true });
+    await channel.assertExchange(SAGA_REPLY_DLX, "fanout", { durable: true });
+    await channel.assertQueue(SAGA_REPLY_DLQ, { durable: true });
+    await channel.bindQueue(SAGA_REPLY_DLQ, SAGA_REPLY_DLX, "");
+    await channel.assertQueue(SAGA_REPLY_QUEUE, { durable: true, deadLetterExchange: SAGA_REPLY_DLX });
+    await channel.bindQueue(SAGA_REPLY_QUEUE, SAGA_REPLY_EXCHANGE, SAGA_REPLY_ROUTING_KEY);
+}
+
 export const NOTIFICATION_EXCHANGE = "notification.commands";
 export const NOTIFICATION_RETRY_EXCHANGE = "notification.commands.retry";
 export const NOTIFICATION_EMAIL_QUEUE = "notification.email-commands";

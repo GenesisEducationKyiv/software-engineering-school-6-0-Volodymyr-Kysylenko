@@ -64,8 +64,9 @@ export class SubscriptionService {
                 throw error;
             });
 
-            await this.deps.notificationPublisher.sendConfirmationEmail(client, {
-                to: subscriptionRecord.email,
+            await this.deps.confirmationSaga.start(client, {
+                subscriptionId: subscriptionRecord.id,
+                email: subscriptionRecord.email,
                 repo: subscriptionRecord.repo_full_name,
                 confirmToken: subscriptionRecord.confirm_token,
                 unsubscribeToken: subscriptionRecord.unsubscribe_token,
