@@ -48,13 +48,6 @@ export interface PrometheusMetricsSet {
     httpRequestsInFlight: promClient.Gauge<string>;
 }
 
-export interface PrometheusRecorderPort {
-    recordGithubApiCall(status: "success" | "error", type: "releases" | "rate_limit" | "other"): void;
-    recordEmailSent(status: "success" | "error"): void;
-    recordScannerRun(status: "success" | "error"): void;
-    updateActiveSubscriptions(count: number): void;
-}
-
 export interface MetricsInitializerPort {
     initialize(): Promise<void>;
 }
