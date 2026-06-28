@@ -16,6 +16,7 @@ export interface EmailConfirmationInput {
     repo: string;
     confirmToken: string;
     unsubscribeToken: string;
+    appBaseUrl: string;
 }
 
 export interface EmailNewReleaseInput {
@@ -25,6 +26,7 @@ export interface EmailNewReleaseInput {
     tagName: string;
     releaseUrl: string;
     unsubscribeToken: string;
+    appBaseUrl: string;
 }
 
 export interface ConfirmationLinks {
@@ -40,8 +42,8 @@ export interface UnsubscribeLinks {
 }
 
 export interface EmailLinkBuilderPort {
-    buildConfirmationLinks(confirmToken: string, unsubscribeToken: string): ConfirmationLinks;
-    buildUnsubscribeLinks(unsubscribeToken: string): UnsubscribeLinks;
+    buildConfirmationLinks(confirmToken: string, unsubscribeToken: string, appBaseUrl: string): ConfirmationLinks;
+    buildUnsubscribeLinks(unsubscribeToken: string, appBaseUrl: string): UnsubscribeLinks;
 }
 
 export interface EmailTemplatePort {
@@ -53,14 +55,16 @@ export interface EmailServicePort {
     verifyConnection(): Promise<void>;
     sendConfirmationEmail(input: EmailConfirmationInput): Promise<void>;
     sendNewReleaseEmail(input: EmailNewReleaseInput): Promise<void>;
+    close(): Promise<void>;
 }
 
-export interface EmailClient {
+export interface EmailClientPort {
     verifyConnection(): Promise<void>;
     send(message: EmailMessage): Promise<void>;
+    close(): Promise<void>;
 }
 
-export interface EmailMetrics {
+export interface EmailEventListenerPort {
     recordEmailSent(status: EmailSendStatus): void;
     recordEmailDuration(type: "confirmation" | "release", durationSeconds: number): void;
 }

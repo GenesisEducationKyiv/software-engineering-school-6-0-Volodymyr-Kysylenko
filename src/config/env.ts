@@ -29,22 +29,6 @@ const EnvSchema = z.object({
     GITHUB_TOKEN: z.string().optional(),
     GITHUB_API_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
 
-    // SMTP
-    SMTP_HOST: z.string().min(1).default("localhost"),
-    SMTP_PORT: z.coerce.number().int().positive().default(1025),
-    SMTP_SECURE: z
-        .string()
-        .optional()
-        .default("false")
-        .transform((value) => value === "true"),
-    SMTP_EMAIL_FROM: z.string().email().default("test@example.com"),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASS: z.string().optional(),
-    EMAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
-    EMAIL_RETRY_ATTEMPTS: z.coerce.number().int().positive().default(3),
-    EMAIL_RETRY_BASE_DELAY_MS: z.coerce.number().int().positive().default(1000),
-    EMAIL_RETRY_MAX_DELAY_MS: z.coerce.number().int().positive().default(10000),
-
     // Redis cache
     REDIS_URL: z.string().url().optional().default("redis://localhost:6379"),
     REDIS_TTL_SECONDS: z.coerce.number().int().positive().default(600),
@@ -61,6 +45,10 @@ const EnvSchema = z.object({
         .optional()
         .default("true")
         .transform((value) => value === "true"),
+
+    // notification microservice
+    NOTIFICATION_SERVICE_URL: z.string().url().default("http://localhost:4000"),
+    NOTIFICATION_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 });
 
 export const env = EnvSchema.parse(process.env);

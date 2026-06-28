@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-import type { EmailClient, EmailMessage } from "./email.types.js";
+import type { EmailClientPort, EmailMessage } from "./email.types.js";
 
 export interface SmtpEmailClientConfig {
     host: string;
@@ -11,7 +11,7 @@ export interface SmtpEmailClientConfig {
     timeoutMs: number;
 }
 
-export class SmtpEmailClient implements EmailClient {
+export class SmtpEmailClient implements EmailClientPort {
     private readonly transporter: nodemailer.Transporter;
 
     constructor(config: SmtpEmailClientConfig) {
@@ -32,5 +32,10 @@ export class SmtpEmailClient implements EmailClient {
 
     async send(message: EmailMessage): Promise<void> {
         await this.transporter.sendMail(message);
+    }
+
+    async close(): Promise<void> {
+        this.transporter.close();
+        return Promise.resolve();
     }
 }

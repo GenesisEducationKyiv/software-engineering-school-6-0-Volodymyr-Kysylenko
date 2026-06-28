@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.gitignore
+*.tsbuildinfo
+.env*
+!.env.example
+**/*.test.*
+**/__tests__
+*.log
+.DS_Store
+Thumbs.db

@@ -27,12 +27,12 @@ async function bootstrap() {
         logger.warn("Redis connection failed, cache will be disabled", error);
     }
 
-    // SMTP connection verification
+    // Notification service connectivity check
     try {
         await emailService.verifyConnection();
-        logger.info("SMTP connection verified");
+        logger.info("Notification service connected");
     } catch (error) {
-        logger.warn("SMTP verification failed, continuing startup", error);
+        logger.warn("Notification service connectivity check failed", error);
     }
 
     // Initialize initial metrics

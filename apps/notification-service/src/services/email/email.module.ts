@@ -4,7 +4,7 @@ import { AppEmailLinkBuilder } from "./email.links.js";
 import { RetryingEmailClient } from "./email.retry.js";
 import { EmailService } from "./email.service.js";
 import { EmailTemplateBuilder } from "./email.templates.js";
-import type { EmailMetrics, EmailServicePort } from "./email.types.js";
+import type { EmailEventListenerPort, EmailServicePort } from "./email.types.js";
 
 export interface EmailConfig {
     smtp: {
@@ -21,13 +21,12 @@ export interface EmailConfig {
         baseDelayMs: number;
         maxDelayMs: number;
     };
-    appBaseUrl: string;
 }
 
 export interface CreateEmailModuleDependencies {
     config: EmailConfig;
     logger: Pick<LoggerPort, "warn">;
-    metrics: EmailMetrics;
+    listener: EmailEventListenerPort;
 }
 
 export interface EmailModule {
@@ -45,12 +44,10 @@ export function createEmailModule(deps: CreateEmailModuleDependencies): EmailMod
     });
 
     const emailClient = new RetryingEmailClient(smtpClient, deps.config.retry, deps.logger);
-
-    const linkBuilder = new AppEmailLinkBuilder({ appBaseUrl: deps.config.appBaseUrl });
-
+    const linkBuilder = new AppEmailLinkBuilder();
     const templateBuilder = new EmailTemplateBuilder({ from: deps.config.smtp.from }, linkBuilder);
 
     return {
-        emailService: new EmailService(emailClient, templateBuilder, deps.metrics),
+        emailService: new EmailService(emailClient, templateBuilder, deps.listener),
     };
 }

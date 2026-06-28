@@ -1,4 +1,4 @@
-import type { EmailServicePort } from "../email/email.types.js";
+import type { EmailServicePort } from "../notification/notification.types.js";
 import { InMemoryScannerLock } from "./scanner.lock.js";
 import { ScannerService } from "./scanner.service.js";
 import type {

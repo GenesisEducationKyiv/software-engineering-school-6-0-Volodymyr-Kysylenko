@@ -7,12 +7,12 @@ import { createLogger } from "../utils/logger/logger.js";
 import { createCacheModule } from "./cache/cache.module.js";
 import { RedisClientAdapter } from "./cache/cache.redis-client.js";
 import type { CacheClientFactory, CacheConfig } from "./cache/cache.types.js";
-import { createEmailModule } from "./email/email.module.js";
 import { DefaultGitHubHttpClient } from "./github/github.http.js";
 import { createGithubModule } from "./github/github.module.js";
 import { createHealthModule } from "./health/health.module.js";
 import type { HealthEnvironmentPort } from "./health/health.types.js";
 import { createMetricsModule } from "./metrics/metrics.module.js";
+import { createNotificationModule } from "./notification/notification.module.js";
 import { createScannerModule } from "./scanner/scanner.module.js";
 import { createSubscriptionModule } from "./subscription/subscription.module.js";
 
@@ -30,26 +30,10 @@ const healthModule = createHealthModule({
     subscriptionRepository,
 });
 
-const emailModule = createEmailModule({
-    config: {
-        smtp: {
-            host: env.SMTP_HOST,
-            port: env.SMTP_PORT,
-            secure: env.SMTP_SECURE,
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS,
-            timeoutMs: env.EMAIL_TIMEOUT_MS,
-            from: env.SMTP_EMAIL_FROM,
-        },
-        retry: {
-            attempts: env.EMAIL_RETRY_ATTEMPTS,
-            baseDelayMs: env.EMAIL_RETRY_BASE_DELAY_MS,
-            maxDelayMs: env.EMAIL_RETRY_MAX_DELAY_MS,
-        },
-        appBaseUrl: env.APP_BASE_URL,
-    },
-    logger: createLogger("EmailService"),
-    metrics: metricsModule.metricsService,
+const notificationModule = createNotificationModule({
+    serviceUrl: env.NOTIFICATION_SERVICE_URL,
+    timeoutMs: env.NOTIFICATION_SERVICE_TIMEOUT_MS,
+    appBaseUrl: env.APP_BASE_URL,
 });
 
 const cacheConfig: CacheConfig = {
@@ -75,20 +59,20 @@ const githubModule = createGithubModule({
 });
 
 const subscriptionModule = createSubscriptionModule({
-    emailService: emailModule.emailService,
+    emailService: notificationModule.emailService,
     githubService: githubModule.githubService,
     subscriptionRepository,
     logger: createLogger("SubscriptionService"),
 });
 
 const scannerModule = createScannerModule({
-    emailService: emailModule.emailService,
+    emailService: notificationModule.emailService,
     githubService: githubModule.githubService,
     metricsService: metricsModule.metricsService,
     subscriptionRepository,
 });
 
-export const emailService = emailModule.emailService;
+export const emailService = notificationModule.emailService;
 export const githubService = githubModule.githubService;
 export const healthService = healthModule.healthService;
 export const metricsService = metricsModule.metricsService;

@@ -9,6 +9,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 export default defineConfig([
     globalIgnores([
         "dist/**",
+        "apps/**/dist/**",
         "public/**",
         "migrations/**",
         "coverage/**",
@@ -18,7 +19,7 @@ export default defineConfig([
     ]),
 
     {
-        files: ["src/**/*.ts"],
+        files: ["src/**/*.ts", "apps/**/src/**/*.ts"],
         extends: [
             js.configs.recommended,
             ...tseslint.configs.recommendedTypeChecked,
@@ -40,7 +41,8 @@ export default defineConfig([
             "import/resolver": {
                 typescript: {
                     alwaysTryTypes: true,
-                    project: "./tsconfig.json",
+                    project: ["./tsconfig.json", "./apps/*/tsconfig.json"],
+                    noWarnOnMultipleProjects: true,
                 },
             },
         },
@@ -136,7 +138,14 @@ export default defineConfig([
     },
 
     {
-        files: ["src/**/*.test.ts", "src/**/*.spec.ts", "src/__tests__/**/*.ts"],
+        files: [
+            "src/**/*.test.ts",
+            "src/**/*.spec.ts",
+            "src/__tests__/**/*.ts",
+            "apps/**/src/**/*.test.ts",
+            "apps/**/src/**/*.spec.ts",
+            "apps/**/__tests__/**/*.ts",
+        ],
         rules: {
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-non-null-assertion": "off",
