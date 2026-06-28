@@ -1,7 +1,7 @@
 # Build stage
 FROM node:22-alpine AS builder
 
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN pnpm --filter notification-service build
 # Production stage
 FROM node:22-alpine AS production
 
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs appuser

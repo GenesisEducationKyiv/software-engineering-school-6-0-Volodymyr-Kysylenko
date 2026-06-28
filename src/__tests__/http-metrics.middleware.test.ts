@@ -80,7 +80,7 @@ describe("createHttpMetricsMiddleware", () => {
         );
     });
 
-    it("falls back to normalized path when no Express route is matched", () => {
+    it("falls back to 'unknown' when no Express route is matched", () => {
         const middleware = createHttpMetricsMiddleware(metrics);
         const req = makeReq({ baseUrl: "", route: null, path: "/unknown/path" });
         const res = makeRes(404);
@@ -88,38 +88,33 @@ describe("createHttpMetricsMiddleware", () => {
 
         res.emit("finish");
 
-        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "/unknown/path", "404", expect.any(Number));
+        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "unknown", "404", expect.any(Number));
     });
 
-    it("normalizes UUID segments in the path when no route is matched", () => {
+    it("uses 'unknown' for unmatched paths with UUID segments", () => {
         const middleware = createHttpMetricsMiddleware(metrics);
         const req = makeReq({
             baseUrl: "",
             route: null,
             path: "/api/550e8400-e29b-41d4-a716-446655440000/details",
         });
-        const res = makeRes(200);
+        const res = makeRes(404);
         middleware(req, res, noop);
 
         res.emit("finish");
 
-        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "/api/:uuid/details", "200", expect.any(Number));
+        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "unknown", "404", expect.any(Number));
     });
 
-    it("normalizes numeric ID segments in the path when no route is matched", () => {
+    it("uses 'unknown' for unmatched paths with numeric segments", () => {
         const middleware = createHttpMetricsMiddleware(metrics);
         const req = makeReq({ baseUrl: "", route: null, path: "/users/42/posts/7" });
-        const res = makeRes(200);
+        const res = makeRes(404);
         middleware(req, res, noop);
 
         res.emit("finish");
 
-        expect(metrics.recordHttpRequest).toHaveBeenCalledWith(
-            "GET",
-            "/users/:id/posts/:id",
-            "200",
-            expect.any(Number),
-        );
+        expect(metrics.recordHttpRequest).toHaveBeenCalledWith("GET", "unknown", "404", expect.any(Number));
     });
 
     it("decrements in-flight on 'close' (client disconnect) without recording request", () => {

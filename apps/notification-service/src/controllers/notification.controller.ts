@@ -8,7 +8,7 @@ import type { LoggerPort } from "../utils/logger/logger.types.js";
 export interface NotificationController {
     sendConfirmation(req: Request, res: Response): Promise<void>;
     sendRelease(req: Request, res: Response): Promise<void>;
-    health(req: Request, res: Response): void;
+    health(req: Request, res: Response): Promise<void>;
 }
 
 export interface NotificationControllerDeps {
@@ -60,8 +60,8 @@ export function createNotificationController(deps: NotificationControllerDeps): 
             }
         },
 
-        health(_req: Request, res: Response): void {
-            res.status(200).json(healthService.getHealth());
+        async health(_req: Request, res: Response): Promise<void> {
+            res.status(200).json(await healthService.getHealth());
         },
     };
 }

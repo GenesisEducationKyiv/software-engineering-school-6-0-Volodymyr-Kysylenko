@@ -23,8 +23,8 @@ export function createNotificationRouter(deps: NotificationRouterDeps): Router {
         controller.sendRelease(req, res).catch(next);
     });
 
-    router.get("/health", (req, res) => {
-        controller.health(req, res);
+    router.get("/health", (req, res, next) => {
+        controller.health(req, res).catch(next);
     });
 
     return router;

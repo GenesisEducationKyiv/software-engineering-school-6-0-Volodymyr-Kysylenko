@@ -3,11 +3,11 @@ import type { NextFunction, Request, Response } from "express";
 import type { MetricsHttpPort } from "../services/metrics/metrics.types.js";
 import { elapsedSeconds } from "../utils/hrtime.js";
 
-const UUID_RE = /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-const NUMERIC_ID_RE = /\/\d+/g;
+const KNOWN_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
-function normalizePath(path: string): string {
-    return path.replace(UUID_RE, "/:uuid").replace(NUMERIC_ID_RE, "/:id");
+function normalizeMethod(method: string): string {
+    const upper = method.toUpperCase();
+    return KNOWN_METHODS.has(upper) ? upper : "OTHER";
 }
 
 const SKIP_PATHS = new Set(["/api/metrics", "/api/health"]);
@@ -19,7 +19,7 @@ export function createHttpMetricsMiddleware(metrics: MetricsHttpPort) {
             return;
         }
 
-        const { method } = req;
+        const method = normalizeMethod(req.method);
         const startNs = process.hrtime.bigint();
 
         metrics.incrementHttpInFlight(method);
@@ -33,7 +33,7 @@ export function createHttpMetricsMiddleware(metrics: MetricsHttpPort) {
 
         res.on("finish", () => {
             const durationSeconds = elapsedSeconds(startNs);
-            const route = req.route ? `${req.baseUrl}${(req.route as { path: string }).path}` : normalizePath(req.path);
+            const route = req.route ? `${req.baseUrl}${(req.route as { path: string }).path}` : "unknown";
 
             releaseInFlight();
             metrics.recordHttpRequest(method, route, String(res.statusCode), durationSeconds);

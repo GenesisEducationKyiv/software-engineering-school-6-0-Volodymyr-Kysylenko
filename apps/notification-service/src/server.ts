@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
 
     const services = createServicesModule();
     const version = process.env.APP_VERSION ?? process.env.npm_package_version ?? "1.0.0";
-    const healthService = new HealthService(version);
+    const healthService = new HealthService(version, services.emailService);
 
     try {
         await services.emailService.verifyConnection();
