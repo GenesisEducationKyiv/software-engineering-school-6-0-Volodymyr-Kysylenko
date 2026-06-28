@@ -11,6 +11,7 @@ COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 RUN pnpm install --filter notification-service --frozen-lockfile
 
+COPY tsconfig.base.json ./
 COPY packages/broker-contracts/src ./packages/broker-contracts/src
 COPY packages/broker-contracts/tsconfig.json ./packages/broker-contracts/
 COPY apps/notification-service/src ./apps/notification-service/src
