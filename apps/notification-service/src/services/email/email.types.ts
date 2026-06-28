@@ -58,13 +58,13 @@ export interface EmailServicePort {
     close(): Promise<void>;
 }
 
-export interface EmailClient {
+export interface EmailClientPort {
     verifyConnection(): Promise<void>;
     send(message: EmailMessage): Promise<void>;
     close(): Promise<void>;
 }
 
-export interface EmailMetrics {
+export interface EmailEventListenerPort {
     recordEmailSent(status: EmailSendStatus): void;
     recordEmailDuration(type: "confirmation" | "release", durationSeconds: number): void;
 }

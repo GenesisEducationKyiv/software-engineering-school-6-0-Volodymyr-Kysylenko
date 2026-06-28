@@ -3,8 +3,8 @@ import type { Request, Response } from "express";
 import type { HealthServicePort } from "../health/health.types.js";
 
 export interface NotificationController {
-    liveness(req: Request, res: Response): void;
-    readiness(req: Request, res: Response): void;
+    liveness(this: void, req: Request, res: Response): void;
+    readiness(this: void, req: Request, res: Response): void;
 }
 
 export interface NotificationControllerDeps {
@@ -15,10 +15,10 @@ export function createNotificationController(deps: NotificationControllerDeps): 
     const { healthService } = deps;
 
     return {
-        liveness(_req: Request, res: Response): void {
+        liveness(this: void, _req: Request, res: Response): void {
             res.status(200).json(healthService.getLiveness());
         },
-        readiness(_req: Request, res: Response): void {
+        readiness(this: void, _req: Request, res: Response): void {
             void healthService
                 .getReadiness()
                 .then((result) => {

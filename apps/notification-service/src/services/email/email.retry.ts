@@ -1,4 +1,4 @@
-import type { EmailClient, EmailMessage, EmailRetryLoggerPort } from "./email.types.js";
+import type { EmailClientPort, EmailMessage, EmailRetryLoggerPort } from "./email.types.js";
 
 export interface RetryConfig {
     attempts: number;
@@ -6,12 +6,12 @@ export interface RetryConfig {
     maxDelayMs: number;
 }
 
-export class RetryingEmailClient implements EmailClient {
+export class RetryingEmailClient implements EmailClientPort {
     private closed = false;
     private readonly pendingTimers = new Set<NodeJS.Timeout>();
 
     constructor(
-        private readonly emailClient: EmailClient,
+        private readonly emailClient: EmailClientPort,
         private readonly config: RetryConfig,
         private readonly logger: EmailRetryLoggerPort,
     ) {}

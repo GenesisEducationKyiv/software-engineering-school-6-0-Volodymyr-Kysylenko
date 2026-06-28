@@ -3,11 +3,10 @@ global:
     evaluation_interval: 15s
     external_labels:
         app: github-release-notifier
+        env: production
 
 scrape_configs:
     - job_name: github-release-notifier
       metrics_path: /api/metrics
       static_configs:
           - targets: ["app:3000"]
-            labels:
-                env: production

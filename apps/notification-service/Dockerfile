@@ -1,7 +1,7 @@
 # Build stage
 FROM node:22-alpine AS builder
 
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable
 
 WORKDIR /app
 
@@ -11,6 +11,7 @@ COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 RUN pnpm install --filter notification-service --frozen-lockfile
 
+COPY tsconfig.base.json ./
 COPY packages/broker-contracts/src ./packages/broker-contracts/src
 COPY packages/broker-contracts/tsconfig.json ./packages/broker-contracts/
 COPY apps/notification-service/src ./apps/notification-service/src
@@ -21,7 +22,7 @@ RUN pnpm --filter notification-service build
 # Production stage
 FROM node:22-alpine AS production
 
-RUN npm install -g pnpm@10.0.0
+RUN corepack enable
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -u 1001 -G nodejs appuser
