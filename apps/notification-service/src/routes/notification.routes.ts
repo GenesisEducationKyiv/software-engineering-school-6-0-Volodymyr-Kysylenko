@@ -11,13 +11,8 @@ export function createNotificationRouter(deps: NotificationRouterDeps): Router {
     const router = Router();
     const controller = createNotificationController(deps);
 
-    router.get("/health/live", (req, res) => {
-        controller.liveness(req, res);
-    });
-
-    router.get("/health/ready", (req, res) => {
-        controller.readiness(req, res);
-    });
+    router.get("/health/live", controller.liveness);
+    router.get("/health/ready", controller.readiness);
 
     return router;
 }
