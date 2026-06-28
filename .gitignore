@@ -11,7 +11,9 @@ build/
 .env
 .env.*
 !.env.example
-!.env.test.ci
+!.env.integration
+!.env.e2e
+!.env.test
 
 # Logs
 logs
@@ -25,6 +27,8 @@ yarn-error.log*
 coverage/
 *.lcov
 .nyc_output
+playwright-report/
+test-results/
 
 # Temporary files
 *.tmp
