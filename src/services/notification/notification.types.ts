@@ -1,3 +1,5 @@
+import type { PoolClient } from "pg";
+
 export interface EmailConfirmationInput {
     to: string;
     repo: string;
@@ -14,8 +16,7 @@ export interface EmailNewReleaseInput {
     unsubscribeToken: string;
 }
 
-export interface EmailServicePort {
-    verifyConnection(): Promise<void>;
-    sendConfirmationEmail(input: EmailConfirmationInput): Promise<void>;
-    sendNewReleaseEmail(input: EmailNewReleaseInput): Promise<void>;
+export interface NotificationCommandPublisherPort {
+    sendConfirmationEmail(client: PoolClient, input: EmailConfirmationInput): Promise<void>;
+    sendNewReleaseEmail(client: PoolClient, input: EmailNewReleaseInput): Promise<void>;
 }

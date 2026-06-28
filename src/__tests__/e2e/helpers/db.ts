@@ -13,15 +13,21 @@ export async function createSubscription(input: {
 }): Promise<SubscriptionRecord> {
     const parsedRepo = parseRepo(input.repo);
 
-    const created = await subscriptionRepository.create({
-        email: input.email,
-        repoOwner: parsedRepo.owner,
-        repoName: parsedRepo.repo,
-        repoFullName: parsedRepo.fullName,
-        confirmToken: generateToken(),
-        unsubscribeToken: generateToken(),
-        lastSeenTag: input.lastSeenTag ?? null,
-    });
+    const client = await pool.connect();
+    let created: SubscriptionRecord;
+    try {
+        created = await subscriptionRepository.create(client, {
+            email: input.email,
+            repoOwner: parsedRepo.owner,
+            repoName: parsedRepo.repo,
+            repoFullName: parsedRepo.fullName,
+            confirmToken: generateToken(),
+            unsubscribeToken: generateToken(),
+            lastSeenTag: input.lastSeenTag ?? null,
+        });
+    } finally {
+        client.release();
+    }
 
     // E2E fixtures sometimes need state variants that are not part of regular create().
     if (!input.confirmed && !input.unsubscribed) {

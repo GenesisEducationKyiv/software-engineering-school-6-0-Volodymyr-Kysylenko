@@ -1,28 +1,37 @@
-import type { HealthServicePort, HealthStatus, SmtpHealthPort } from "./health.types.js";
+import type { HealthCheckFunction, HealthCheckResult, HealthServicePort } from "./health.types.js";
 
 export class HealthService implements HealthServicePort {
     private readonly startedAt = Date.now();
 
     constructor(
         private readonly version: string,
-        private readonly smtp: SmtpHealthPort,
+        private readonly readinessChecks: Map<string, HealthCheckFunction> = new Map(),
     ) {}
 
-    async getHealth(): Promise<HealthStatus> {
-        let smtpStatus: "ok" | "error";
-        try {
-            await this.smtp.verifyConnection();
-            smtpStatus = "ok";
-        } catch {
-            smtpStatus = "error";
-        }
-
+    getLiveness(): HealthCheckResult {
         return {
-            status: smtpStatus === "ok" ? "ok" : "degraded",
-            uptime: Math.floor((Date.now() - this.startedAt) / 1000),
+            status: "ok",
+            uptime: this.getUptime(),
             timestamp: new Date().toISOString(),
             version: this.version,
-            smtp: smtpStatus,
+            checks: [],
         };
+    }
+
+    async getReadiness(): Promise<HealthCheckResult> {
+        const checks = await Promise.all([...this.readinessChecks.values()].map(async (check) => check()));
+        const status = checks.every((check) => check.status === "ok") ? "ok" : "unhealthy";
+
+        return {
+            status,
+            uptime: this.getUptime(),
+            timestamp: new Date().toISOString(),
+            version: this.version,
+            checks,
+        };
+    }
+
+    private getUptime(): number {
+        return Math.floor((Date.now() - this.startedAt) / 1000);
     }
 }

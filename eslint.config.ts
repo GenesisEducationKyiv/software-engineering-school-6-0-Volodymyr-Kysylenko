@@ -19,7 +19,7 @@ export default defineConfig([
     ]),
 
     {
-        files: ["src/**/*.ts", "apps/**/src/**/*.ts"],
+        files: ["src/**/*.ts", "apps/**/src/**/*.ts", "packages/**/src/**/*.ts"],
         extends: [
             js.configs.recommended,
             ...tseslint.configs.recommendedTypeChecked,
@@ -41,7 +41,7 @@ export default defineConfig([
             "import/resolver": {
                 typescript: {
                     alwaysTryTypes: true,
-                    project: ["./tsconfig.json", "./apps/*/tsconfig.json"],
+                    project: ["./tsconfig.json", "./apps/*/tsconfig.json", "./packages/*/tsconfig.json"],
                     noWarnOnMultipleProjects: true,
                 },
             },
@@ -145,6 +145,9 @@ export default defineConfig([
             "apps/**/src/**/*.test.ts",
             "apps/**/src/**/*.spec.ts",
             "apps/**/__tests__/**/*.ts",
+            "packages/**/src/**/*.test.ts",
+            "packages/**/src/**/*.spec.ts",
+            "packages/**/__tests__/**/*.ts",
         ],
         rules: {
             "@typescript-eslint/no-explicit-any": "off",

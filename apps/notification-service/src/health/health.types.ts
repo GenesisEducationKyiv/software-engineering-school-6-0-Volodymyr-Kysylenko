@@ -1,15 +1,22 @@
-export interface HealthStatus {
-    status: "ok" | "degraded";
+export type HealthStatus = "ok" | "unhealthy";
+
+export interface HealthCheck {
+    name: string;
+    status: HealthStatus;
+    message?: string;
+}
+
+export interface HealthCheckResult {
+    status: HealthStatus;
     uptime: number;
     timestamp: string;
     version: string;
-    smtp: "ok" | "error";
+    checks: HealthCheck[];
 }
 
-export interface SmtpHealthPort {
-    verifyConnection(): Promise<void>;
-}
+export type HealthCheckFunction = () => Promise<HealthCheck>;
 
 export interface HealthServicePort {
-    getHealth(): Promise<HealthStatus>;
+    getLiveness(): HealthCheckResult;
+    getReadiness(): Promise<HealthCheckResult>;
 }

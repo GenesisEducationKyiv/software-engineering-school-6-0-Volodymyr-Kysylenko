@@ -1,6 +1,7 @@
 # Dependencies
 node_modules
 apps/**/node_modules
+packages/**/node_modules
 
 # Source control
 .git
@@ -9,8 +10,10 @@ apps/**/node_modules
 # Build outputs
 dist
 apps/**/dist
+packages/**/dist
 build
 *.tsbuildinfo
+packages/**/*.tsbuildinfo
 
 # Environment files
 .env*

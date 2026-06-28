@@ -7,15 +7,51 @@ services:
             - "4000:4000"
         env_file:
             - ./apps/notification-service/.env.test
+        environment:
+            - RABBITMQ_URL=amqp://notifier:notifier@rabbitmq:5672
+            - REDIS_URL=redis://redis:6379
         depends_on:
-            - mailhog
+            mailhog:
+                condition: service_started
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
         healthcheck:
             test:
                 [
                     "CMD",
                     "node",
                     "-e",
-                    "fetch('http://localhost:4000/api/health').then(r=>r.ok?process.exit(0):process.exit(1))",
+                    "fetch('http://localhost:4000/api/health/ready').then(r=>r.ok?process.exit(0):process.exit(1))",
+                ]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+            start_period: 10s
+
+    outbox-worker:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: ["node", "dist/outbox-worker.js"]
+        env_file:
+            - .env.test
+        environment:
+            - DATABASE_URL=postgresql://postgres:postgres@db:5432/releases_test
+            - RABBITMQ_URL=amqp://notifier:notifier@rabbitmq:5672
+        depends_on:
+            db:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "node",
+                    "-e",
+                    "fetch('http://localhost:3100/health/ready').then(r=>r.ok?process.exit(0):process.exit(1))",
                 ]
             interval: 5s
             timeout: 3s
@@ -53,3 +89,18 @@ services:
         ports:
             - "1025:1025"
             - "8025:8025"
+
+    rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        environment:
+            - RABBITMQ_DEFAULT_USER=notifier
+            - RABBITMQ_DEFAULT_PASS=notifier
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+            start_period: 10s

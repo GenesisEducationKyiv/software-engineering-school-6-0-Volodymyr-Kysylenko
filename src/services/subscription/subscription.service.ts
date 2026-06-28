@@ -1,8 +1,11 @@
 import type { SubscriptionRecord, SubscriptionResponse } from "../../types/subscription.js";
 import { generateToken } from "../../utils/crypto.js";
 import { AppError } from "../../utils/errors.js";
+import { PG_UNIQUE_VIOLATION } from "../../utils/pg-errors.js";
 import { parseRepo, validateEmail } from "../../utils/validators.js";
 import type { SubscriptionServiceDependencies } from "./subscription.types.js";
+
+const ERR_ALREADY_SUBSCRIBED = "Email already subscribed to this repository";
 
 export class SubscriptionService {
     constructor(private readonly deps: SubscriptionServiceDependencies) {}
@@ -18,44 +21,60 @@ export class SubscriptionService {
 
         await this.deps.githubService.assertRepositoryExists(parsedRepo);
 
-        const existing = await this.deps.subscriptionRepository.findByEmailAndRepo(email, parsedRepo.fullName);
-        if (existing?.unsubscribed_at === null) {
-            this.deps.logger.warn("Duplicate subscription attempt", undefined, {
-                email,
-                repo: parsedRepo.fullName,
-            });
-            throw AppError.conflict("Email already subscribed to this repository");
-        }
-
         const latestRelease = await this.deps.githubService.getLatestRelease(parsedRepo);
         const confirmToken = generateToken();
         const unsubscribeToken = generateToken();
 
-        const record = existing
-            ? await this.deps.subscriptionRepository.reactivate({
-                  id: existing.id,
-                  confirmToken,
-                  unsubscribeToken,
-                  lastSeenTag: latestRelease?.tagName ?? null,
-              })
-            : await this.deps.subscriptionRepository.create({
-                  email,
-                  repoOwner: parsedRepo.owner,
-                  repoName: parsedRepo.repo,
-                  repoFullName: parsedRepo.fullName,
-                  confirmToken,
-                  unsubscribeToken,
-                  lastSeenTag: latestRelease?.tagName ?? null,
-              });
+        const record = await this.deps.transactionRunner(async (client) => {
+            const existing = await this.deps.subscriptionRepository.findByEmailAndRepoForUpdate(
+                client,
+                email,
+                parsedRepo.fullName,
+            );
 
-        await this.deps.emailService.sendConfirmationEmail({
-            to: record.email,
-            repo: record.repo_full_name,
-            confirmToken: record.confirm_token,
-            unsubscribeToken: record.unsubscribe_token,
+            if (existing?.unsubscribed_at === null) {
+                this.deps.logger.warn("Duplicate subscription attempt", undefined, {
+                    email,
+                    repo: parsedRepo.fullName,
+                });
+                throw AppError.conflict(ERR_ALREADY_SUBSCRIBED);
+            }
+
+            const subscriptionRecord = await (
+                existing
+                    ? this.deps.subscriptionRepository.reactivate(client, {
+                          id: existing.id,
+                          confirmToken,
+                          unsubscribeToken,
+                          lastSeenTag: latestRelease?.tagName ?? null,
+                      })
+                    : this.deps.subscriptionRepository.create(client, {
+                          email,
+                          repoOwner: parsedRepo.owner,
+                          repoName: parsedRepo.repo,
+                          repoFullName: parsedRepo.fullName,
+                          confirmToken,
+                          unsubscribeToken,
+                          lastSeenTag: latestRelease?.tagName ?? null,
+                      })
+            ).catch((error: unknown) => {
+                if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) {
+                    throw AppError.conflict(ERR_ALREADY_SUBSCRIBED);
+                }
+                throw error;
+            });
+
+            await this.deps.notificationPublisher.sendConfirmationEmail(client, {
+                to: subscriptionRecord.email,
+                repo: subscriptionRecord.repo_full_name,
+                confirmToken: subscriptionRecord.confirm_token,
+                unsubscribeToken: subscriptionRecord.unsubscribe_token,
+            });
+
+            return subscriptionRecord;
         });
 
-        this.deps.logger.info("Subscription confirmation email sent", {
+        this.deps.logger.info("Subscription created, confirmation email enqueued", {
             email: record.email,
             repo: record.repo_full_name,
         });

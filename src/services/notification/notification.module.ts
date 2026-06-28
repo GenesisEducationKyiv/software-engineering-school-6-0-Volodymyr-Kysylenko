@@ -1,12 +1,13 @@
-import { type NotificationClientConfig, NotificationHttpClient } from "./notification.client.js";
-import type { EmailServicePort } from "./notification.types.js";
+import type { OutboxRepositoryPort } from "../../repositories/outbox.repository.js";
+import { OutboxNotificationPublisher } from "./notification.outbox-publisher.js";
+import type { NotificationCommandPublisherPort } from "./notification.types.js";
 
 export interface NotificationModule {
-    emailService: EmailServicePort;
+    notificationPublisher: NotificationCommandPublisherPort;
 }
 
-export function createNotificationModule(config: NotificationClientConfig): NotificationModule {
+export function createNotificationModule(outboxRepository: OutboxRepositoryPort): NotificationModule {
     return {
-        emailService: new NotificationHttpClient(config),
+        notificationPublisher: new OutboxNotificationPublisher(outboxRepository),
     };
 }

@@ -24,6 +24,13 @@ export class MetricsController {
         }
     };
 
+    liveCheck: ControllerMethod = async (_req, res) => {
+        res.status(200).json({ status: "ok" });
+        return Promise.resolve();
+    };
+
+    readyCheck: ControllerMethod = async (req, res, next) => this.healthCheck(req, res, next);
+
     metricsCheck: ControllerMethod = async (_req, res, next) => {
         try {
             const metrics = await this.deps.metricsService.getMetrics();

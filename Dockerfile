@@ -8,7 +8,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json ./
+COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml* ./
+COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 # Install all dependencies (including dev dependencies for build)
 RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
@@ -33,7 +35,9 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json ./
+COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml* ./
+COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
 # Install only production dependencies
 # --ignore-scripts skips lifecycle hooks (prepare → husky) that require
@@ -44,6 +48,8 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts && \
 
 # Copy built application from builder stage
 COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/package.json ./packages/broker-contracts/package.json
+COPY --from=builder --chown=appuser:nodejs /app/packages/broker-contracts/dist ./packages/broker-contracts/dist
 
 # Copy other necessary files
 COPY --from=builder --chown=appuser:nodejs /app/proto ./proto

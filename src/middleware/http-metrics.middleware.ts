@@ -10,7 +10,7 @@ function normalizeMethod(method: string): string {
     return KNOWN_METHODS.has(upper) ? upper : "OTHER";
 }
 
-const SKIP_PATHS = new Set(["/api/metrics", "/api/health"]);
+const SKIP_PATHS = new Set(["/api/metrics", "/api/health", "/api/health/live", "/api/health/ready"]);
 
 export function createHttpMetricsMiddleware(metrics: MetricsHttpPort) {
     return (req: Request, res: Response, next: NextFunction): void => {

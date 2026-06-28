@@ -46,9 +46,16 @@ const EnvSchema = z.object({
         .default("true")
         .transform((value) => value === "true"),
 
-    // notification microservice
-    NOTIFICATION_SERVICE_URL: z.string().url().default("http://localhost:4000"),
-    NOTIFICATION_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    // message broker
+    RABBITMQ_URL: z.string().min(1).default("amqp://guest:guest@localhost:5672"),
+
+    // outbox worker
+    OUTBOX_WORKER_PORT: z.coerce.number().int().positive().default(3100),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(20),
+    OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+    OUTBOX_STALE_PROCESSING_MS: z.coerce.number().int().positive().default(60_000),
+    RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 });
 
 export const env = EnvSchema.parse(process.env);

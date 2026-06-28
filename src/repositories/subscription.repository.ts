@@ -1,3 +1,5 @@
+import type { PoolClient } from "pg";
+
 import { pool } from "../db/pool.js";
 import type { SubscriptionRecord } from "../types/subscription.js";
 
@@ -6,16 +8,19 @@ interface CountRow {
 }
 
 export class SubscriptionRepository {
-    async create(input: {
-        email: string;
-        repoOwner: string;
-        repoName: string;
-        repoFullName: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord> {
-        const result = await pool.query<SubscriptionRecord>(
+    async create(
+        client: PoolClient,
+        input: {
+            email: string;
+            repoOwner: string;
+            repoName: string;
+            repoFullName: string;
+            confirmToken: string;
+            unsubscribeToken: string;
+            lastSeenTag: string | null;
+        },
+    ): Promise<SubscriptionRecord> {
+        const result = await client.query<SubscriptionRecord>(
             `
             INSERT INTO subscriptions (
                 email,
@@ -43,13 +48,16 @@ export class SubscriptionRepository {
         return result.rows[0];
     }
 
-    async reactivate(input: {
-        id: string;
-        confirmToken: string;
-        unsubscribeToken: string;
-        lastSeenTag: string | null;
-    }): Promise<SubscriptionRecord> {
-        const result = await pool.query<SubscriptionRecord>(
+    async reactivate(
+        client: PoolClient,
+        input: {
+            id: string;
+            confirmToken: string;
+            unsubscribeToken: string;
+            lastSeenTag: string | null;
+        },
+    ): Promise<SubscriptionRecord> {
+        const result = await client.query<SubscriptionRecord>(
             `
             UPDATE subscriptions
             SET confirmed = FALSE,
@@ -74,6 +82,25 @@ export class SubscriptionRepository {
             FROM subscriptions
             WHERE email = $1 AND repo_full_name = $2
             LIMIT 1
+            `,
+            [email, repoFullName],
+        );
+
+        return result.rows[0] ?? null;
+    }
+
+    async findByEmailAndRepoForUpdate(
+        client: PoolClient,
+        email: string,
+        repoFullName: string,
+    ): Promise<SubscriptionRecord | null> {
+        const result = await client.query<SubscriptionRecord>(
+            `
+            SELECT *
+            FROM subscriptions
+            WHERE email = $1 AND repo_full_name = $2
+            LIMIT 1
+            FOR UPDATE
             `,
             [email, repoFullName],
         );
@@ -159,8 +186,8 @@ export class SubscriptionRepository {
         return result.rows;
     }
 
-    async updateLastSeenTagByRepo(repoFullName: string, tag: string): Promise<void> {
-        await pool.query(
+    async updateLastSeenTagByRepo(client: PoolClient, repoFullName: string, tag: string): Promise<void> {
+        await client.query(
             `
             UPDATE subscriptions
             SET last_seen_tag = $2

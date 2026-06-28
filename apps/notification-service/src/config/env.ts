@@ -9,6 +9,16 @@ const EnvSchema = z
         PORT: z.coerce.number().int().positive().default(4000),
         LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
 
+        // public URL of the main app (used to build links in emails)
+        APP_BASE_URL: z.string().url().default("http://localhost:3000"),
+
+        RABBITMQ_URL: z.string().min(1),
+        RABBITMQ_PREFETCH: z.coerce.number().int().positive().default(5),
+        RABBITMQ_PUBLISH_CONFIRM_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+        REDIS_URL: z.string().url().default("redis://localhost:6379"),
+        IDEMPOTENCY_TTL_SECONDS: z.coerce.number().int().positive().default(86400),
+
         SMTP_HOST: z.string().min(1).default("localhost"),
         SMTP_PORT: z.coerce.number().int().positive().default(1025),
         SMTP_SECURE: z
