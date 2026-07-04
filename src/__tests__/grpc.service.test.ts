@@ -36,7 +36,7 @@ describe("gRPC Subscription Service", () => {
 
     it("should reject invalid subscription request", async () => {
         const request = new Promise((resolve, reject) => {
-            client.Subscribe({ email: "invalid-email", repo: "invalid/repo/format" }, (error: any, response: any) => {
+            client.subscribe({ email: "invalid-email", repo: "invalid/repo/format" }, (error: any, response: any) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -53,7 +53,7 @@ describe("gRPC Subscription Service", () => {
 
     it("should reject invalid token for confirm", async () => {
         const request = new Promise((resolve, reject) => {
-            client.Confirm({ token: "" }, (error: any, response: any) => {
+            client.confirm({ token: "" }, (error: any, response: any) => {
                 if (error) {
                     reject(error);
                 } else {
@@ -70,7 +70,7 @@ describe("gRPC Subscription Service", () => {
 
     it("should reject empty email for get subscriptions", async () => {
         const request = new Promise((resolve, reject) => {
-            client.GetSubscriptions({ email: "invalid-email" }, (error: any, response: any) => {
+            client.getSubscriptions({ email: "invalid-email" }, (error: any, response: any) => {
                 if (error) {
                     reject(error);
                 } else {

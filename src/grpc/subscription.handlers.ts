@@ -3,7 +3,7 @@ import * as grpc from "@grpc/grpc-js";
 import { CreateSubscriptionDto, ListSubscriptionsDto, TokenParamsDto } from "../dto/subscription.dto.js";
 import { subscriptionService } from "../services/services.module.js";
 import { AppError } from "../utils/errors.js";
-import type { SubscriptionServiceHandlers } from "./generated/subscription/SubscriptionService.js";
+import type { SubscriptionServiceServer } from "./buf-generated/subscription.js";
 import { mapHttpToGrpcStatus, validateGrpcRequest } from "./validation.utils.js";
 
 function createGrpcError(code: grpc.status, details: string): grpc.ServiceError {
@@ -25,8 +25,8 @@ function handleGrpcError(error: unknown): grpc.ServiceError {
 }
 
 async function handleSubscribe(
-    call: Parameters<SubscriptionServiceHandlers["Subscribe"]>[0],
-    callback: Parameters<SubscriptionServiceHandlers["Subscribe"]>[1],
+    call: Parameters<SubscriptionServiceServer["subscribe"]>[0],
+    callback: Parameters<SubscriptionServiceServer["subscribe"]>[1],
 ): Promise<void> {
     try {
         const { email, repo } = call.request;
@@ -40,17 +40,15 @@ async function handleSubscribe(
 
         await subscriptionService.subscribe(validation.data);
 
-        callback(null, {
-            message: "Subscription successful. Confirmation email sent.",
-        });
+        callback(null, { message: "Subscription successful. Confirmation email sent." });
     } catch (error) {
         callback(handleGrpcError(error));
     }
 }
 
 async function handleConfirm(
-    call: Parameters<SubscriptionServiceHandlers["Confirm"]>[0],
-    callback: Parameters<SubscriptionServiceHandlers["Confirm"]>[1],
+    call: Parameters<SubscriptionServiceServer["confirm"]>[0],
+    callback: Parameters<SubscriptionServiceServer["confirm"]>[1],
 ): Promise<void> {
     try {
         const { token } = call.request;
@@ -64,17 +62,15 @@ async function handleConfirm(
 
         await subscriptionService.confirm(validation.data.token);
 
-        callback(null, {
-            message: "Subscription confirmed successfully",
-        });
+        callback(null, { message: "Subscription confirmed successfully" });
     } catch (error) {
         callback(handleGrpcError(error));
     }
 }
 
 async function handleUnsubscribe(
-    call: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[0],
-    callback: Parameters<SubscriptionServiceHandlers["Unsubscribe"]>[1],
+    call: Parameters<SubscriptionServiceServer["unsubscribe"]>[0],
+    callback: Parameters<SubscriptionServiceServer["unsubscribe"]>[1],
 ): Promise<void> {
     try {
         const { token } = call.request;
@@ -88,17 +84,15 @@ async function handleUnsubscribe(
 
         await subscriptionService.unsubscribe(validation.data.token);
 
-        callback(null, {
-            message: "Unsubscribed successfully",
-        });
+        callback(null, { message: "Unsubscribed successfully" });
     } catch (error) {
         callback(handleGrpcError(error));
     }
 }
 
 async function handleGetSubscriptions(
-    call: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[0],
-    callback: Parameters<SubscriptionServiceHandlers["GetSubscriptions"]>[1],
+    call: Parameters<SubscriptionServiceServer["getSubscriptions"]>[0],
+    callback: Parameters<SubscriptionServiceServer["getSubscriptions"]>[1],
 ): Promise<void> {
     try {
         const { email } = call.request;
@@ -117,7 +111,7 @@ async function handleGetSubscriptions(
                 email: sub.email,
                 repo: sub.repo,
                 confirmed: sub.confirmed,
-                last_seen_tag: sub.last_seen_tag ?? "",
+                lastSeenTag: sub.last_seen_tag ?? "",
             })),
         });
     } catch (error) {
@@ -125,26 +119,26 @@ async function handleGetSubscriptions(
     }
 }
 
-export const subscriptionHandlers: SubscriptionServiceHandlers = {
-    Subscribe(call, callback) {
+export const subscriptionHandlers: SubscriptionServiceServer = {
+    subscribe(call, callback) {
         handleSubscribe(call, callback).catch((error: unknown) => {
             callback(handleGrpcError(error));
         });
     },
 
-    Confirm(call, callback) {
+    confirm(call, callback) {
         handleConfirm(call, callback).catch((error: unknown) => {
             callback(handleGrpcError(error));
         });
     },
 
-    Unsubscribe(call, callback) {
+    unsubscribe(call, callback) {
         handleUnsubscribe(call, callback).catch((error: unknown) => {
             callback(handleGrpcError(error));
         });
     },
 
-    GetSubscriptions(call, callback) {
+    getSubscriptions(call, callback) {
         handleGetSubscriptions(call, callback).catch((error: unknown) => {
             callback(handleGrpcError(error));
         });

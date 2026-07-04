@@ -1,5 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+import { startNotificationGrpcServer } from "./grpc/notification.grpc-server.js";
 import { HealthService } from "./health/health.service.js";
 import type { HealthCheckFunction } from "./health/health.types.js";
 import { RedisIdempotencyStore } from "./idempotency/redis-idempotency.store.js";
@@ -77,8 +78,20 @@ async function bootstrap(): Promise<void> {
         ]),
     );
 
+    const grpcServer = await startNotificationGrpcServer(
+        env.GRPC_PORT,
+        {
+            emailService: services.emailService,
+            logger: createLogger("GrpcServer"),
+            appBaseUrl: env.APP_BASE_URL,
+        },
+        env.GRPC_HOST,
+    );
+
     const app = createApp({
         healthService,
+        emailService: services.emailService,
+        appBaseUrl: env.APP_BASE_URL,
         logger: createLogger("Http"),
     });
 
@@ -88,6 +101,7 @@ async function bootstrap(): Promise<void> {
 
     const shutdown = (signal: string): void => {
         logger.info(`Received ${signal}, shutting down gracefully`);
+        grpcServer.forceShutdown();
         server.close(() => {
             void Promise.all([
                 services.emailService.close(),

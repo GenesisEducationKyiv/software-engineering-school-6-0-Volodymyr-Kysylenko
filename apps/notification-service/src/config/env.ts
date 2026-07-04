@@ -7,6 +7,8 @@ const EnvSchema = z
     .object({
         NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
         PORT: z.coerce.number().int().positive().default(4000),
+        GRPC_PORT: z.coerce.number().int().positive().default(4001),
+        GRPC_HOST: z.string().default("0.0.0.0"),
         LOG_LEVEL: z.enum(["error", "warn", "info", "debug"]).default("info"),
 
         // public URL of the main app (used to build links in emails)
