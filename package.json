@@ -20,7 +20,6 @@
         "proto:gen": "buf generate",
         "buf:lint": "buf lint",
         "buf:gen": "buf generate",
-        "benchmark:notification": "tsx scripts/benchmark-notification.ts",
         "format": "prettier . --write",
         "format:check": "prettier . --check",
         "typecheck": "pnpm run build:contracts && pnpm run typecheck:monolith && pnpm run typecheck:notification",

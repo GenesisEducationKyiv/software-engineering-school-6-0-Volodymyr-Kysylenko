@@ -10,9 +10,19 @@ export interface NotificationHandlersDeps {
     appBaseUrl: string;
 }
 
+function createGrpcError(code: grpc.status, details: string): grpc.ServiceError {
+    return {
+        name: "ServiceError",
+        message: details,
+        code,
+        details,
+        metadata: new grpc.Metadata(),
+    };
+}
+
 function replyError(callback: grpc.sendUnaryData<{ success: boolean }>, logger: LoggerPort, error: unknown): void {
     logger.error("gRPC notification handler error", error);
-    callback({ code: grpc.status.INTERNAL, message: "Internal server error" });
+    callback(createGrpcError(grpc.status.INTERNAL, "Internal server error"));
 }
 
 function validateRequiredFields(
@@ -24,7 +34,7 @@ function validateRequiredFields(
         .map(([k]) => k);
 
     if (missing.length > 0) {
-        callback({ code: grpc.status.INVALID_ARGUMENT, message: `Missing required fields: ${missing.join(", ")}` });
+        callback(createGrpcError(grpc.status.INVALID_ARGUMENT, `Missing required fields: ${missing.join(", ")}`));
         return false;
     }
     return true;

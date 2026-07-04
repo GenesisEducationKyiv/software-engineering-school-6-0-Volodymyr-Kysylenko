@@ -9,15 +9,20 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/notification-service/package.json ./apps/notification-service/
 COPY packages/broker-contracts/package.json ./packages/broker-contracts/
 
-RUN pnpm install --filter notification-service --frozen-lockfile
+# Full (unfiltered) install: buf/ts-proto used for proto generation below
+# are root devDependencies, not notification-service ones, so a
+# --filter notification-service install would leave them missing.
+RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.base.json ./
+COPY buf.yaml buf.gen.yaml ./
 COPY packages/broker-contracts/src ./packages/broker-contracts/src
 COPY packages/broker-contracts/tsconfig.json ./packages/broker-contracts/
 COPY apps/notification-service/src ./apps/notification-service/src
 COPY apps/notification-service/tsconfig.json ./apps/notification-service/
 COPY proto ./proto
 
+RUN pnpm run proto:gen
 RUN pnpm --filter notification-service build
 
 # Production stage
